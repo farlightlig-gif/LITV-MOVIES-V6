@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#080808;color:#fff;font-family:Arial,sans-serif}
 nav{position:sticky;top:0;z-index:50;background:#090909;border-bottom:1px solid #222;padding:13px 4%;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.logo{font-size:24px;font-weight:900;white-space:nowrap}.logo b{color:#e50914}.nav{display:flex;gap:3px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;white-space:nowrap}.logo img{display:block;width:150px;height:44px;object-fit:contain;border-radius:9px;box-shadow:0 0 0 1px rgba(255,255,255,.05)}.nav{display:flex;gap:3px;flex-wrap:wrap}
 .nav button{background:none;border:0;color:#aaa;padding:9px 7px;cursor:pointer;font-size:14px}.nav button:hover{color:#fff}
 .search{margin-left:auto;display:flex;width:300px}.search input{flex:1;min-width:0;background:#151515;color:#fff;border:1px solid #333;padding:11px;border-radius:7px 0 0 7px;outline:none}.search button{border:0;background:#e50914;color:#fff;padding:0 15px;border-radius:0 7px 7px 0;font-weight:bold;cursor:pointer}
 .hero{padding:75px 6%;min-height:370px;display:flex;align-items:center;background:radial-gradient(circle at 75% 30%,#42090d,transparent 45%),linear-gradient(135deg,#151515,#080808)}
@@ -28,7 +28,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 .personSearch{display:flex;max-width:600px;margin:0 0 30px}.personSearch input{flex:1;min-width:0;background:#151515;color:#fff;border:1px solid #333;padding:13px;border-radius:8px 0 0 8px;outline:none;font-size:16px}.personSearch button{border:0;background:#e50914;color:#fff;padding:0 20px;border-radius:0 8px 8px 0;font-weight:bold;cursor:pointer}
 .personHero{min-height:100vh;padding:80px 7%;background-size:cover;background-position:center;position:relative}.personHero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#080808 8%,rgba(8,8,8,.88) 48%,rgba(8,8,8,.35)),linear-gradient(0deg,#080808 0%,transparent 65%)}.personContent{position:relative;z-index:2;max-width:1000px}.personPortrait{width:190px;border-radius:14px}.personHero h1{font-size:clamp(42px,7vw,75px);margin:18px 0 8px}.personMeta{color:#aaa}.personBio{color:#ccc;line-height:1.7;max-width:720px}.personMovies{margin-top:45px}.loader{text-align:center;color:#888;padding:22px}
 @media(max-width:700px){
- nav{padding:11px 3%;gap:10px}.logo{font-size:21px}.nav{order:3;width:100%;display:flex;overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;padding-bottom:2px}.nav button{white-space:nowrap;font-size:13px}.search{width:100%;margin-left:0;order:2}.hero{padding:58px 5%;min-height:330px}
+ nav{padding:11px 3%;gap:10px}.logo img{width:132px;height:39px}.nav{order:3;width:100%;display:flex;overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;padding-bottom:2px}.nav button{white-space:nowrap;font-size:13px}.search{width:100%;margin-left:0;order:2}.hero{padding:58px 5%;min-height:330px}
  .movie{flex-basis:142px}
  .grid,#results,#favorites,#watchlist,#allGrid,#catalogFavoritesGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px}
  .grid .movie,#results .movie,#favorites .movie,#watchlist .movie,#allGrid .movie,#catalogFavoritesGrid .movie{width:100%;min-width:0;flex:none}
@@ -40,7 +40,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 .account-btn{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;border-radius:999px;padding:10px 15px;font-weight:800;cursor:pointer}
 .account-modal{display:none;position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);overflow:auto;padding:24px}
 .account-card{max-width:460px;margin:7vh auto;background:#11151d;border:1px solid rgba(255,255,255,.13);border-radius:24px;padding:24px;box-shadow:0 25px 80px rgba(0,0,0,.55)}
-.account-card h2{margin:0 0 8px}.account-card p{color:#aeb7c7}
+.account-logo{display:block;width:min(250px,78%);height:auto;margin:2px auto 20px;border-radius:16px;box-shadow:0 14px 35px rgba(0,0,0,.35);object-fit:contain}.account-card h2{margin:0 0 8px}.account-card p{color:#aeb7c7}
 .account-field{width:100%;box-sizing:border-box;margin:7px 0;padding:13px 14px;border-radius:13px;border:1px solid rgba(255,255,255,.14);background:#090c12;color:#fff;outline:none}
 .account-action{width:100%;margin-top:10px;padding:13px;border:0;border-radius:13px;font-weight:900;cursor:pointer}
 .account-switch{background:none;border:0;color:#9fc6ff;cursor:pointer;padding:10px 0}
@@ -53,7 +53,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 </head>
 <body>
 <nav>
-<div class="logo">LI<b>TV</b> MOVIES</div>
+<div class="logo"><img src="litv-logo.jpg" alt="LITV MOVIES"></div>
 <div class="nav">
 <button onclick="home()">🏠 Domov</button>
 <button onclick="openCatalog('movie')">🎬 Filmy</button>
@@ -950,6 +950,7 @@ restoreAccount();
 <div id="accountModal" class="account-modal">
   <div class="account-card">
     <button class="account-close" onclick="closeAccount()">×</button>
+    <img class="account-logo" src="litv-logo.jpg" alt="LITV MOVIES">
     <div id="accountGuest">
       <h2 id="accountTitle">👤 Prihlásenie</h2>
       <p id="accountSubtitle">Prihlás sa do LITV MOVIES a priprav si cloudovú synchronizáciu.</p>
