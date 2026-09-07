@@ -119,6 +119,11 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 <img id="poster" class="poster"><h1 id="dt"></h1><div id="dm" style="color:#aaa"></div><p id="desc"></p>
 <div class="actions"><button id="fav" class="action" onclick="toggleFav()">❤️ Obľúbené</button><button id="wl" class="action secondary" onclick="toggleWL()">🔖 Watchlist</button></div>
 <div class="castSection"><div class="castTitle">🎭 Obsadenie</div><div id="castStatus" class="status"></div><div id="movieCast" class="castRail"></div></div>
+<div id="imdbBox" class="castSection" style="display:none">
+  <div class="castTitle">IMDb</div>
+  <div id="imdbId" class="status" style="padding-top:0"></div>
+  <button id="imdbOpen" class="action" onclick="openIMDb()">Otvoriť na IMDb</button>
+</div>
 </div></div></div>
 
 <div id="personDetail"><button class="close" onclick="closePerson()">×</button><div id="personHero" class="personHero"><div class="personContent">
@@ -178,6 +183,8 @@ function normalized(m,typeHint){
  return {...m,litv_type:type,media_type:(type==="movie"?"movie":"tv")};
 }
 function favoriteKeyFor(m){
+ const exact=m?.litv_source_category;
+ if(exact==="movie"||exact==="tv"||exact==="telenovela") return FAV_KEYS[exact];
  return FAV_KEYS[normalizeType(mediaType(m))];
 }
 function hasInKey(k,m){
@@ -212,6 +219,7 @@ function celebPage(){hide();document.getElementById("celebPage").style.display="
 
 function card(raw,typeHint){
  const m=normalized(raw,typeHint),d=document.createElement("div");d.className="movie";
+ if(typeHint==="movie"||typeHint==="tv"||typeHint==="telenovela") m.litv_source_category=typeHint;
  const img=m.poster_path?"https://image.tmdb.org/t/p/w500"+m.poster_path:"";
  const typ=mediaType(m)==="movie"?"🎬":mediaType(m)==="telenovela"?"🌹":"📺";
  d.innerHTML=(hasFavorite(m)?'<div class="badge">❤️</div>':"")+
@@ -247,9 +255,12 @@ function renderFavoritesMenu(type){
 }
 function categoryFavorites(type){
  const direct=get(FAV_KEYS[type]);
- const shared=get("litv_favorites").filter(x=>normalizeType(mediaType(x))===type);
  const map=new Map();
- [...direct,...shared].forEach(x=>map.set(mediaKey(x),normalized(x,type)));
+ direct.forEach(x=>{
+   const item=normalized(x,type);
+   item.litv_source_category=type;
+   map.set(mediaKey(item),item);
+ });
  const items=[...map.values()];
  save(FAV_KEYS[type],items);
  return items;
@@ -388,8 +399,10 @@ async function loadMoreSearch(){
 document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")search(true)});
 
 async function openDetail(m){
- current=normalized(m,mediaType(m));
- const type=mediaType(current);
+ const sourceCategory=m?.litv_source_category||m?.litv_type||mediaType(m);
+ current=normalized(m,sourceCategory);
+ current.litv_source_category=sourceCategory;
+ const type=sourceCategory==="telenovela"?"telenovela":mediaType(current);
  const apiType=type==="movie"?"movie":"tv";
  document.getElementById("detail").style.display="block";document.body.style.overflow="hidden";
  document.getElementById("dt").textContent=mediaTitle(current);
@@ -398,13 +411,20 @@ async function openDetail(m){
  const kind=type==="movie"?"🎬 Film":type==="telenovela"?"🌹 Telenovela":"📺 Seriál";
  document.getElementById("dm").textContent=mediaYear(current)+" • "+kind+" • ★ "+(current.vote_average?Number(current.vote_average).toFixed(1):"—");
  document.getElementById("desc").textContent=current.overview||"Načítavam detail...";
- updateButtons();document.getElementById("movieCast").innerHTML="";document.getElementById("castStatus").textContent="Načítavam obsadenie...";
+ updateButtons();
+ document.getElementById("movieCast").innerHTML="";
+ document.getElementById("castStatus").textContent="Načítavam obsadenie...";
+ document.getElementById("imdbBox").style.display="none";
+ document.getElementById("imdbId").textContent="";
+ document.getElementById("imdbOpen").dataset.imdbId="";
  try{
   const d=await api("/"+apiType+"/"+current.id),detail=d.details||d.movie||d.tv||current;
   current=normalized({...current,...detail},type);
+  current.litv_source_category=sourceCategory;
   document.getElementById("dt").textContent=mediaTitle(current);
   document.getElementById("desc").textContent=current.overview||"Popis nie je dostupný.";
   renderCast(d.cast||[]);
+  renderIMDb(d.imdb_id || d.external_ids?.imdb_id || current.imdb_id || null);
   updateButtons();
  }catch(e){
   document.getElementById("castStatus").textContent="Obsadenie sa nepodarilo načítať.";
@@ -422,6 +442,25 @@ function renderCast(cast){
    box.appendChild(c);
  });
 }
+function renderIMDb(imdbId){
+ const box=document.getElementById("imdbBox");
+ const idEl=document.getElementById("imdbId");
+ const btn=document.getElementById("imdbOpen");
+ if(!imdbId){
+   box.style.display="none";
+   btn.dataset.imdbId="";
+   return;
+ }
+ idEl.textContent="IMDb ID: "+imdbId;
+ btn.dataset.imdbId=imdbId;
+ box.style.display="block";
+}
+function openIMDb(){
+ const imdbId=document.getElementById("imdbOpen").dataset.imdbId;
+ if(!imdbId)return;
+ window.open("https://www.imdb.com/title/"+encodeURIComponent(imdbId)+"/","_blank","noopener,noreferrer");
+}
+
 function updateButtons(){
  if(!current)return;
  document.getElementById("fav").textContent=hasFavorite(current)?"❤️ Odstrániť z obľúbených":"❤️ Pridať do obľúbených";
@@ -430,10 +469,15 @@ function updateButtons(){
 function toggleFav(){
  if(!current)return;
 
- const currentType=normalizeType(mediaType(current));
- current=normalized(current,currentType);
- const categoryKey=FAV_KEYS[currentType];
+ const exact=current.litv_source_category;
+ const currentType=(exact==="movie"||exact==="tv"||exact==="telenovela")
+   ? exact
+   : normalizeType(mediaType(current));
 
+ current=normalized(current,currentType);
+ current.litv_source_category=currentType;
+
+ const categoryKey=FAV_KEYS[currentType];
  let category=get(categoryKey);
  let ci=category.findIndex(x=>mediaKey(x)===mediaKey(current));
  const removing=ci>=0;
@@ -445,7 +489,7 @@ function toggleFav(){
  }
  save(categoryKey,category);
 
- // Keep the original shared favorites storage in sync as well.
+ // Keep shared favorites in sync.
  let shared=get("litv_favorites");
  let si=shared.findIndex(x=>mediaKey(x)===mediaKey(current));
  if(removing){
