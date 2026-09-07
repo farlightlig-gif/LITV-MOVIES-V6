@@ -675,7 +675,7 @@ let litvAccountMode="login";
 let litvUser=null;
 
 async function authRequest(path,options={}){
-  const token=localStorage.getItem(LITV_AUTH_TOKEN_KEY);
+  const token=localStorage.getItem(LITV_AUTH_TOKEN_KEY)||sessionStorage.getItem(LITV_AUTH_TOKEN_KEY);
   const headers={"Content-Type":"application/json",...(options.headers||{})};
   if(token)headers.Authorization="Bearer "+token;
   const r=await fetch(LITV_AUTH_API+path,{...options,headers});
@@ -696,6 +696,8 @@ function switchAccountMode(){
   document.getElementById("registerNameWrap").style.display=reg?"block":"none";
   document.getElementById("accountLogin").style.display=reg?"none":"block";
   document.getElementById("accountEmail").style.display=reg?"block":"none";
+  const rememberWrap=document.getElementById("accountRememberWrap");
+  if(rememberWrap)rememberWrap.style.display=reg?"none":"flex";
   document.getElementById("accountSubmit").textContent=reg?"Vytvoriť účet":"Prihlásiť sa";
   document.getElementById("accountSwitch").textContent=reg?"Už máš účet? Prihlásiť sa":"Nemáš účet? Zaregistrovať sa";
   document.getElementById("accountMessage").textContent="";
@@ -717,7 +719,11 @@ async function submitAccount(){
         password:document.getElementById("accountPassword").value
       })});
     }
-    localStorage.setItem(LITV_AUTH_TOKEN_KEY,d.token);
+    localStorage.removeItem(LITV_AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(LITV_AUTH_TOKEN_KEY);
+    const remember=!litvAccountMode||litvAccountMode!=="login"?false:!!document.getElementById("accountRemember")?.checked;
+    if(remember) localStorage.setItem(LITV_AUTH_TOKEN_KEY,d.token);
+    else sessionStorage.setItem(LITV_AUTH_TOKEN_KEY,d.token);
     litvUser=d.user;
     msg.textContent="";
     refreshAccountUI();
@@ -725,6 +731,7 @@ async function submitAccount(){
 }
 function logoutAccount(){
   localStorage.removeItem(LITV_AUTH_TOKEN_KEY);
+  sessionStorage.removeItem(LITV_AUTH_TOKEN_KEY);
   litvUser=null;
   refreshAccountUI();
 }
@@ -739,21 +746,25 @@ function refreshAccountUI(){
   }
 }
 async function restoreAccount(){
-  const token=localStorage.getItem(LITV_AUTH_TOKEN_KEY);
+  const token=localStorage.getItem(LITV_AUTH_TOKEN_KEY)||sessionStorage.getItem(LITV_AUTH_TOKEN_KEY);
   if(!token){refreshAccountUI();return;}
   try{
     const d=await authRequest("/auth/me");
     litvUser=d.user;
   }catch(e){
     localStorage.removeItem(LITV_AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(LITV_AUTH_TOKEN_KEY);
     litvUser=null;
   }
   refreshAccountUI();
 }
-document.getElementById("accountModal").addEventListener("click",e=>{if(e.target.id==="accountModal")closeAccount()});
+window.addEventListener("DOMContentLoaded",()=>{
+  const modal=document.getElementById("accountModal");
+  if(modal)modal.addEventListener("click",e=>{if(e.target.id==="accountModal")closeAccount()});
+});
 
 
-// ===== LITV V9.3 TWO-WAY CLOUD SYNC + RESTORE =====
+// ===== LITV V9.6 TWO-WAY CLOUD SYNC + SESSION RESTORE =====
 function cloudMediaPayload(m, forcedType){
   const source=forcedType||m?.litv_source_category||m?.litv_type||mediaType(m);
   return {
@@ -904,6 +915,17 @@ async function syncCloudBothWays(){
   }
 }
 
+async function syncSingleCloudItem(kind,payload){
+  if(!litvUser)return;
+  const body={favorites:[],watchlist:[],celeb_favorites:[]};
+  body[kind].push(payload);
+  try{
+    await authRequest("/user/sync",{method:"POST",body:JSON.stringify(body)});
+  }catch(e){
+    console.warn("LITV automatic cloud sync:",e);
+  }
+}
+
 const _litvOldToggleFav=toggleFav;
 toggleFav=function(){
   if(!current)return;
@@ -911,12 +933,8 @@ toggleFav=function(){
   _litvOldToggleFav();
   if(litvUser){
     const p=cloudMediaPayload(item,item.litv_source_category);
-    if(wasFavorite){
-      cloudDelete("/user/favorites",p);
-    }else{
-      // Additions use the same proven /user/sync route as the manual cloud sync.
-      syncExistingLocalData(true).catch(e=>console.warn("LITV automatic favorites sync:",e));
-    }
+    if(wasFavorite) cloudDelete("/user/favorites",p);
+    else syncSingleCloudItem("favorites",p);
   }
 };
 const _litvOldToggleWL=toggleWL;
@@ -924,14 +942,22 @@ toggleWL=function(){
   if(!current)return;
   const item={...current},existed=hasInKey("litv_watchlist",item);
   _litvOldToggleWL();
-  if(litvUser){const p=cloudMediaPayload(item);existed?cloudDelete("/user/watchlist",p):cloudPost("/user/watchlist",p);}
+  if(litvUser){
+    const p=cloudMediaPayload(item);
+    if(existed) cloudDelete("/user/watchlist",p);
+    else syncSingleCloudItem("watchlist",p);
+  }
 };
 const _litvOldTogglePersonFavorite=togglePersonFavorite;
 togglePersonFavorite=function(){
   if(!currentPerson)return;
   const p={...currentPerson},existed=hasInKey("litv_celeb_favorites",p);
   _litvOldTogglePersonFavorite();
-  if(litvUser){const q=cloudCelebPayload(p);existed?cloudDelete("/user/celeb-favorites",q):cloudPost("/user/celeb-favorites",q);}
+  if(litvUser){
+    const q=cloudCelebPayload(p);
+    if(existed) cloudDelete("/user/celeb-favorites",q);
+    else syncSingleCloudItem("celeb_favorites",q);
+  }
 };
 
 // After login/registration: first download cloud data, merge it locally, then upload the merged set.
@@ -959,8 +985,8 @@ restoreAccount=async function(){
   if(litvUser) await syncCloudBothWays();
 };
 
-// Run account restore only after the V9.3 wrappers exist.
-restoreAccount();
+// Restore the account only after the full page (including the account modal) exists.
+window.addEventListener("DOMContentLoaded",()=>restoreAccount());
 
 </script>
 
@@ -979,6 +1005,10 @@ restoreAccount();
       <input id="accountLogin" class="account-field" placeholder="E-mail alebo používateľské meno">
       <input id="accountEmail" class="account-field" type="email" placeholder="E-mail" style="display:none">
       <input id="accountPassword" class="account-field" type="password" placeholder="Heslo (min. 8 znakov)">
+      <label id="accountRememberWrap" style="display:flex;align-items:center;gap:9px;margin:9px 2px 4px;color:#c8cfda;font-size:14px;cursor:pointer">
+        <input id="accountRemember" type="checkbox" style="width:18px;height:18px;accent-color:#e50914">
+        <span>Zostať prihlásený 30 dní</span>
+      </label>
       <button id="accountSubmit" class="account-action" onclick="submitAccount()">Prihlásiť sa</button>
       <button id="accountSwitch" class="account-switch" onclick="switchAccountMode()">Nemáš účet? Zaregistrovať sa</button>
       <div id="accountMessage" class="account-error"></div>
