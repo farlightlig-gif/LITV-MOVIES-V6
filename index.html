@@ -30,8 +30,8 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 @media(max-width:700px){
  nav{padding:11px 3%;gap:10px}.logo{font-size:21px}.nav{order:3;width:100%;display:flex;overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;padding-bottom:2px}.nav button{white-space:nowrap;font-size:13px}.search{width:100%;margin-left:0;order:2}.hero{padding:58px 5%;min-height:330px}
  .movie{flex-basis:142px}
- .grid,#results,#favorites,#watchlist,#allGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px}
- .grid .movie,#results .movie,#favorites .movie,#watchlist .movie,#allGrid .movie{width:100%;min-width:0;flex:none}
+ .grid,#results,#favorites,#watchlist,#allGrid,#catalogFavoritesGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px}
+ .grid .movie,#results .movie,#favorites .movie,#watchlist .movie,#allGrid .movie,#catalogFavoritesGrid .movie{width:100%;min-width:0;flex:none}
  .detail{padding:70px 5%}.poster{width:140px}.personGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.personHero{padding:70px 5%}.personPortrait{width:145px}.castCard{flex-basis:118px}
  section{padding:24px 4%}.title{font-size:22px}.showAll{font-size:12px;padding:8px 10px}.catalogHero{padding:34px 4% 16px}
 }
@@ -60,11 +60,28 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 
 <div id="catalogPage" class="page">
 <div class="catalogHero"><h1 id="catalogTitle"></h1><p id="catalogSubtitle"></p></div>
+
+<section style="padding-bottom:6px">
+<div class="subnav" id="catalogSubnav">
+<button id="catalogBrowseBtn" class="active" onclick="showCatalogView('browse')">🔥 Objavovať</button>
+<button id="catalogFavBtn" onclick="showCatalogView('favorites')">❤️ Obľúbené</button>
+</div>
+</section>
+
+<div id="catalogBrowseView">
 <section class="favoriteStrip">
-<div class="sectionHead"><div class="title" id="catalogFavTitle">❤️ Obľúbené</div></div>
+<div class="sectionHead"><div class="title" id="catalogFavTitle">❤️ Obľúbené</div><button class="showAll" onclick="showCatalogView('favorites')">Zobraziť všetky ›</button></div>
 <div id="catalogFavorites" class="rail"></div>
 </section>
 <div id="catalogSections"></div>
+</div>
+
+<div id="catalogFavoritesView" style="display:none">
+<section>
+<div class="sectionHead"><div class="title" id="catalogFavoritesPageTitle">❤️ Obľúbené</div></div>
+<div id="catalogFavoritesGrid" class="grid"></div>
+</section>
+</div>
 </div>
 
 <div id="allPage" class="page"><section><div class="sectionHead"><div class="title" id="allTitle"></div></div><div id="allGrid" class="grid"></div><div id="allLoader" class="loader"></div></section></div>
@@ -137,7 +154,13 @@ const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const mediaTitle=m=>m.title||m.name||"Bez názvu";
 const mediaDate=m=>m.release_date||m.first_air_date||"";
 const mediaYear=m=>mediaDate(m)?String(mediaDate(m)).slice(0,4):"—";
-const mediaType=m=>m.litv_type||m.media_type||(m.name&&!m.title?"tv":"movie");
+const mediaType=m=>{
+ if(m?.litv_type==="telenovela") return "telenovela";
+ const genreIds=Array.isArray(m?.genre_ids)?m.genre_ids:[];
+ const genres=Array.isArray(m?.genres)?m.genres.map(g=>g.id):[];
+ if((genreIds.includes(10766)||genres.includes(10766)) && (m?.media_type==="tv"||m?.name)) return "telenovela";
+ return m?.litv_type||m?.media_type||(m?.name&&!m?.title?"tv":"movie");
+};
 const mediaKey=m=>mediaType(m)+":"+m.id;
 
 function normalizeType(type){
@@ -146,8 +169,12 @@ function normalizeType(type){
  return "movie";
 }
 function normalized(m,typeHint){
+ const genreIds=Array.isArray(m?.genre_ids)?m.genre_ids:[];
+ const genres=Array.isArray(m?.genres)?m.genres.map(g=>g.id):[];
+ const looksTelenovela=genreIds.includes(10766)||genres.includes(10766);
  const forced=typeHint==="telenovela"?"telenovela":null;
- const type=forced||m.litv_type||m.media_type||(m.name&&!m.title?"tv":"movie");
+ let type=forced||m.litv_type||m.media_type||(m.name&&!m.title?"tv":"movie");
+ if(type!=="movie" && looksTelenovela) type="telenovela";
  return {...m,litv_type:type,media_type:(type==="movie"?"movie":"tv")};
 }
 function favoriteKeyFor(m){
@@ -218,10 +245,19 @@ function renderFavoritesMenu(type){
  appendCards(box,items,type==="all"?null:type);
  if(!items.length) box.innerHTML='<div class="empty">Zatiaľ tu nič nemáš.</div>';
 }
+function categoryFavorites(type){
+ const direct=get(FAV_KEYS[type]);
+ const shared=get("litv_favorites").filter(x=>normalizeType(mediaType(x))===type);
+ const map=new Map();
+ [...direct,...shared].forEach(x=>map.set(mediaKey(x),normalized(x,type)));
+ const items=[...map.values()];
+ save(FAV_KEYS[type],items);
+ return items;
+}
 function renderCatalogFavorites(type){
  document.getElementById("catalogFavTitle").textContent=LABELS[type].fav;
  const box=document.getElementById("catalogFavorites");box.innerHTML="";
- const items=get(FAV_KEYS[type]);
+ const items=categoryFavorites(type);
  appendCards(box,items,type);
  if(!items.length) box.innerHTML='<div class="empty">Zatiaľ tu nič nemáš.</div>';
 }
@@ -243,8 +279,38 @@ function openCatalog(type){
  document.getElementById("catalogTitle").textContent=LABELS[type].title;
  document.getElementById("catalogSubtitle").textContent=LABELS[type].subtitle;
  renderCatalogFavorites(type);
+ renderCatalogFavoritesGrid(type);
  buildSections("catalogSections",type,"catalog");
+ showCatalogView("browse");
  window.scrollTo(0,0);
+}
+
+function showCatalogView(view){
+ const browse=document.getElementById("catalogBrowseView");
+ const favs=document.getElementById("catalogFavoritesView");
+ const browseBtn=document.getElementById("catalogBrowseBtn");
+ const favBtn=document.getElementById("catalogFavBtn");
+ const isFav=view==="favorites";
+
+ browse.style.display=isFav?"none":"block";
+ favs.style.display=isFav?"block":"none";
+ browseBtn.classList.toggle("active",!isFav);
+ favBtn.classList.toggle("active",isFav);
+
+ if(isFav){
+   renderCatalogFavoritesGrid(currentCatalog);
+   window.scrollTo(0,0);
+ }
+}
+
+function renderCatalogFavoritesGrid(type){
+ const box=document.getElementById("catalogFavoritesGrid");
+ if(!box)return;
+ document.getElementById("catalogFavoritesPageTitle").textContent=LABELS[type].fav;
+ box.innerHTML="";
+ const items=categoryFavorites(type);
+ appendCards(box,items,type);
+ if(!items.length) box.innerHTML='<div class="empty">Zatiaľ tu nič nemáš.</div>';
 }
 function initRail(id,type,section){
  railStates[id]={type,section,page:0,total:999,loading:false};
@@ -363,10 +429,41 @@ function updateButtons(){
 }
 function toggleFav(){
  if(!current)return;
- const key=favoriteKeyFor(current);
- let a=get(key),i=a.findIndex(x=>mediaKey(x)===mediaKey(current));
- i>=0?a.splice(i,1):a.unshift(current);
- save(key,a);updateButtons();
+
+ const currentType=normalizeType(mediaType(current));
+ current=normalized(current,currentType);
+ const categoryKey=FAV_KEYS[currentType];
+
+ let category=get(categoryKey);
+ let ci=category.findIndex(x=>mediaKey(x)===mediaKey(current));
+ const removing=ci>=0;
+
+ if(removing){
+   category.splice(ci,1);
+ }else{
+   category.unshift(current);
+ }
+ save(categoryKey,category);
+
+ // Keep the original shared favorites storage in sync as well.
+ let shared=get("litv_favorites");
+ let si=shared.findIndex(x=>mediaKey(x)===mediaKey(current));
+ if(removing){
+   if(si>=0) shared.splice(si,1);
+ }else{
+   if(si<0) shared.unshift(current);
+ }
+ save("litv_favorites",shared);
+
+ updateButtons();
+
+ if(document.getElementById("catalogPage").style.display==="block" && currentCatalog===currentType){
+   renderCatalogFavorites(currentCatalog);
+   renderCatalogFavoritesGrid(currentCatalog);
+ }
+ if(document.getElementById("favoritesPage").style.display==="block"){
+   renderFavoritesMenu("all");
+ }
 }
 function toggleWL(){
  if(!current)return;
