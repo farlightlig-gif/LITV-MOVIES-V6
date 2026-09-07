@@ -20,7 +20,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 .page{display:none}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:16px}.empty,.status{color:#888;padding:18px 0}
 .catalogHero{padding:46px 5% 20px;background:linear-gradient(135deg,#1c0709,#080808)}.catalogHero h1{font-size:clamp(36px,6vw,58px);margin:0 0 8px}.catalogHero p{color:#aaa;margin:0}
 .favoriteStrip{padding-top:8px}.favoriteStrip .rail{min-height:40px}
-#detail,#personDetail{display:none;position:fixed;inset:0;z-index:100;background:#080808;overflow:auto}.close{position:fixed;right:22px;top:18px;z-index:110;width:45px;height:45px;border:0;border-radius:50%;background:#e50914;color:#fff;font-size:25px;cursor:pointer}
+#detail,#personDetail{display:none;position:fixed;inset:0;background:#080808;overflow:auto}#detail{z-index:130}#personDetail{z-index:100}.close{position:fixed;right:22px;top:18px;z-index:150;width:45px;height:45px;border:0;border-radius:50%;background:#e50914;color:#fff;font-size:25px;cursor:pointer}
 .detail{min-height:100vh;padding:78px 7%;background-position:center top;background-size:cover;position:relative}.detail:after{content:"";position:absolute;inset:0;background:linear-gradient(to right,#080808 5%,rgba(8,8,8,.88) 48%,rgba(8,8,8,.35) 85%),linear-gradient(to top,#080808 3%,transparent 75%)}.detailin{position:relative;z-index:2;max-width:980px}.poster{width:180px;border-radius:10px}.detail h1{font-size:clamp(40px,6vw,70px);margin:18px 0}.detail p{color:#ccc;line-height:1.7}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
 .castSection{position:relative;z-index:2;margin-top:42px}.castTitle{font-size:26px;font-weight:bold;margin-bottom:14px}.castRail{display:flex;gap:13px;overflow-x:auto;padding:4px 2px 18px}.castCard{flex:0 0 130px;background:#121212;border-radius:12px;overflow:hidden;cursor:pointer}.castCard img{width:100%;aspect-ratio:2/3;object-fit:cover;background:#171717;display:block}.castInfo{padding:9px}.castName{font-weight:bold;font-size:14px}.castRole{color:#888;font-size:12px;margin-top:5px}
 .subnav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:25px}.subnav button{background:#171717;border:1px solid #333;color:#ddd;padding:11px 17px;border-radius:8px;cursor:pointer}.subnav button.active,.subnav button:hover{background:#e50914;color:#fff;border-color:#e50914}
@@ -164,6 +164,13 @@ const mediaType=m=>{
  if((genreIds.includes(10766)||genres.includes(10766)) && (m?.media_type==="tv"||m?.name)) return "telenovela";
  return m?.litv_type||m?.media_type||(m?.name&&!m?.title?"tv":"movie");
 };
+const apiMediaType=m=>{
+ if(m?.litv_api_type==="movie"||m?.litv_api_type==="tv") return m.litv_api_type;
+ if(m?.media_type==="movie"||m?.media_type==="tv") return m.media_type;
+ if(m?.litv_source_category==="movie"||m?.litv_type==="movie") return "movie";
+ if(m?.litv_source_category==="tv"||m?.litv_source_category==="telenovela"||m?.litv_type==="tv"||m?.litv_type==="telenovela") return "tv";
+ return (m?.name&&!m?.title)?"tv":"movie";
+};
 const mediaKey=m=>mediaType(m)+":"+m.id;
 
 function normalizeType(type){
@@ -175,10 +182,25 @@ function normalized(m,typeHint){
  const genreIds=Array.isArray(m?.genre_ids)?m.genre_ids:[];
  const genres=Array.isArray(m?.genres)?m.genres.map(g=>g.id):[];
  const looksTelenovela=genreIds.includes(10766)||genres.includes(10766);
+
+ let apiType=m?.litv_api_type;
+ if(apiType!=="movie"&&apiType!=="tv"){
+   if(m?.media_type==="movie"||m?.media_type==="tv") apiType=m.media_type;
+   else if(typeHint==="movie") apiType="movie";
+   else if(typeHint==="tv"||typeHint==="telenovela") apiType="tv";
+   else apiType=(m?.name&&!m?.title)?"tv":"movie";
+ }
+
  const forced=typeHint==="telenovela"?"telenovela":null;
- let type=forced||m.litv_type||m.media_type||(m.name&&!m.title?"tv":"movie");
+ let type=forced||m.litv_type||m.media_type||(apiType==="tv"?"tv":"movie");
  if(type!=="movie" && looksTelenovela) type="telenovela";
- return {...m,litv_type:type,media_type:(type==="movie"?"movie":"tv")};
+
+ return {
+   ...m,
+   litv_type:type,
+   litv_api_type:apiType,
+   media_type:apiType
+ };
 }
 function favoriteKeyFor(m){
  const exact=m?.litv_source_category;
@@ -217,7 +239,11 @@ function celebPage(){hide();document.getElementById("celebPage").style.display="
 
 function card(raw,typeHint){
  const m=normalized(raw,typeHint),d=document.createElement("div");d.className="movie";
- if(typeHint==="movie"||typeHint==="tv"||typeHint==="telenovela") m.litv_source_category=typeHint;
+ if(typeHint==="movie"||typeHint==="tv"||typeHint==="telenovela"){
+   m.litv_source_category=typeHint;
+   m.litv_api_type=(typeHint==="movie"?"movie":"tv");
+   m.media_type=m.litv_api_type;
+ }
  const img=m.poster_path?"https://image.tmdb.org/t/p/w500"+m.poster_path:"";
  const typ=mediaType(m)==="movie"?"🎬":mediaType(m)==="telenovela"?"🌹":"📺";
  d.innerHTML=(hasFavorite(m)?'<div class="badge">❤️</div>':"")+
@@ -405,10 +431,17 @@ document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")s
 
 async function openDetail(m){
  const sourceCategory=m?.litv_source_category||m?.litv_type||mediaType(m);
+ const realApiType=apiMediaType(m);
+
  current=normalized(m,sourceCategory);
  current.litv_source_category=sourceCategory;
- const type=sourceCategory==="telenovela"?"telenovela":mediaType(current);
- const apiType=type==="movie"?"movie":"tv";
+ current.litv_api_type=realApiType;
+ current.media_type=realApiType;
+
+ const type=sourceCategory==="telenovela"
+   ? "telenovela"
+   : (sourceCategory==="movie"?"movie":"tv");
+ const apiType=realApiType;
  document.getElementById("detail").style.display="block";document.body.style.overflow="hidden";
  document.getElementById("dt").textContent=mediaTitle(current);
  document.getElementById("poster").src=current.poster_path?"https://image.tmdb.org/t/p/w500"+current.poster_path:"";
@@ -426,13 +459,15 @@ async function openDetail(m){
   const d=await api("/"+apiType+"/"+current.id),detail=d.details||d.movie||d.tv||current;
   current=normalized({...current,...detail},type);
   current.litv_source_category=sourceCategory;
+  current.litv_api_type=realApiType;
+  current.media_type=realApiType;
   document.getElementById("dt").textContent=mediaTitle(current);
   document.getElementById("desc").textContent=current.overview||"Popis nie je dostupný.";
   renderCast(d.cast||[]);
   renderIMDb(d.imdb_id || d.external_ids?.imdb_id || current.imdb_id || null);
   updateButtons();
  }catch(e){
-  document.getElementById("castStatus").textContent="Obsadenie sa nepodarilo načítať.";
+  document.getElementById("castStatus").textContent="Detail sa nepodarilo úplne načítať, ale základné údaje zostávajú zobrazené.";
  }
 }
 function renderCast(cast){
