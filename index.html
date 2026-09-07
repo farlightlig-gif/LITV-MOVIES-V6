@@ -751,10 +751,9 @@ async function restoreAccount(){
   refreshAccountUI();
 }
 document.getElementById("accountModal").addEventListener("click",e=>{if(e.target.id==="accountModal")closeAccount()});
-restoreAccount();
 
 
-// ===== LITV V9.2 ROBUST CLOUD SYNC =====
+// ===== LITV V9.3 TWO-WAY CLOUD SYNC + RESTORE =====
 function cloudMediaPayload(m, forcedType){
   const source=forcedType||m?.litv_source_category||m?.litv_type||mediaType(m);
   return {
@@ -766,6 +765,28 @@ function cloudMediaPayload(m, forcedType){
 }
 function cloudCelebPayload(p){
   return {tmdb_id:Number(p.id),name:p.name||"",gender:p.gender==null?null:Number(p.gender),profile_path:p.profile_path||null};
+}
+function cloudMediaToLocal(item){
+  const type=item?.media_type==="movie"?"movie":item?.media_type==="telenovela"?"telenovela":"tv";
+  const title=item?.title||"Bez názvu";
+  return normalized({
+    id:Number(item.tmdb_id),
+    title,
+    name:title,
+    poster_path:item.poster_path||null,
+    litv_type:type,
+    litv_source_category:type,
+    litv_api_type:type==="movie"?"movie":"tv",
+    media_type:type==="movie"?"movie":"tv"
+  },type);
+}
+function cloudCelebToLocal(item){
+  return {
+    id:Number(item.tmdb_id),
+    name:item?.name||"Bez mena",
+    gender:item?.gender==null?0:Number(item.gender),
+    profile_path:item?.profile_path||null
+  };
 }
 async function cloudPost(path,obj){
   if(!litvUser)return;
@@ -784,7 +805,6 @@ function collectLocalCloudData(){
   add(get("litv_favorites_movies"),"movie");
   add(get("litv_favorites_series"),"tv");
   add(get("litv_favorites_telenovelas"),"telenovela");
-  // Include legacy/shared favorites too, without replacing category data.
   get("litv_favorites").forEach(x=>{
     const p=cloudMediaPayload(x);
     if(Number.isInteger(p.tmdb_id) && !favMap.has(p.media_type+":"+p.tmdb_id)) favMap.set(p.media_type+":"+p.tmdb_id,p);
@@ -807,16 +827,77 @@ async function syncChunked(data){
   }
   return imported;
 }
+function mergeByKey(localItems,cloudItems,keyFn){
+  const map=new Map();
+  localItems.forEach(x=>map.set(keyFn(x),x));
+  cloudItems.forEach(x=>{if(!map.has(keyFn(x)))map.set(keyFn(x),x);});
+  return [...map.values()];
+}
+async function restoreCloudData(){
+  if(!litvUser)return 0;
+  const [favData,wlData,celebData]=await Promise.all([
+    authRequest("/user/favorites"),
+    authRequest("/user/watchlist"),
+    authRequest("/user/celeb-favorites")
+  ]);
+  const cloudFavs=Array.isArray(favData?.items)?favData.items:[];
+  const cloudWL=Array.isArray(wlData?.items)?wlData.items:[];
+  const cloudCelebs=Array.isArray(celebData?.items)?celebData.items:[];
+
+  const byType={movie:[],tv:[],telenovela:[]};
+  cloudFavs.forEach(item=>{
+    const local=cloudMediaToLocal(item);
+    const type=item?.media_type==="movie"?"movie":item?.media_type==="telenovela"?"telenovela":"tv";
+    byType[type].push(local);
+  });
+
+  const categoryPairs=[
+    ["movie","litv_favorites_movies"],
+    ["tv","litv_favorites_series"],
+    ["telenovela","litv_favorites_telenovelas"]
+  ];
+  categoryPairs.forEach(([type,key])=>{
+    const merged=mergeByKey(get(key),byType[type],x=>String(x.id));
+    save(key,merged);
+  });
+
+  const allCloudFavs=cloudFavs.map(cloudMediaToLocal);
+  save("litv_favorites",mergeByKey(get("litv_favorites"),allCloudFavs,x=>mediaType(x)+":"+x.id));
+
+  const localWL=cloudWL.map(cloudMediaToLocal);
+  save("litv_watchlist",mergeByKey(get("litv_watchlist"),localWL,x=>mediaType(x)+":"+x.id));
+
+  const localCelebs=cloudCelebs.map(cloudCelebToLocal);
+  save("litv_celeb_favorites",mergeByKey(get("litv_celeb_favorites"),localCelebs,x=>String(x.id)));
+
+  // Refresh visible favorites/celeb views if they are open.
+  if(document.getElementById("favoritesPage")?.style.display==="block"){
+    const tvActive=document.getElementById("favTvAllBtn")?.classList.contains("active");
+    renderFavoritesMenu(tvActive?"tvall":"movie");
+  }
+  if(document.getElementById("celebPage")?.style.display==="block" && (celebType==="favActors"||celebType==="favActresses")){
+    showCelebType(celebType);
+  }
+
+  return cloudFavs.length+cloudWL.length+cloudCelebs.length;
+}
 async function syncExistingLocalData(force=false){
+  if(!litvUser)return 0;
+  const data=collectLocalCloudData();
+  const total=data.favorites.length+data.watchlist.length+data.celeb_favorites.length;
+  const imported=await syncChunked(data);
+  localStorage.setItem("litv_cloud_sync_user_"+litvUser.id,"1");
+  return {imported,total};
+}
+async function syncCloudBothWays(){
   if(!litvUser)return;
   const msg=document.getElementById("cloudSyncStatus");
-  if(msg)msg.textContent="☁️ Synchronizujem...";
+  if(msg)msg.textContent="☁️ Obnovujem dáta z cloudu...";
   try{
-    const data=collectLocalCloudData();
-    const total=data.favorites.length+data.watchlist.length+data.celeb_favorites.length;
-    const imported=await syncChunked(data);
-    localStorage.setItem("litv_cloud_sync_user_"+litvUser.id,"1");
-    if(msg)msg.textContent="✅ Cloud synchronizovaný: "+imported+" / "+total+" položiek.";
+    const restored=await restoreCloudData();
+    if(msg)msg.textContent="☁️ Ukladám zlúčené dáta do cloudu...";
+    const result=await syncExistingLocalData(true);
+    if(msg)msg.textContent="✅ Cloud synchronizovaný: "+restored+" cloudových / "+result.total+" lokálnych položiek.";
   }catch(e){
     if(msg)msg.textContent="❌ Synchronizácia zlyhala: "+(e.message||"neznáma chyba");
     console.error("LITV cloud sync:",e);
@@ -845,19 +926,22 @@ togglePersonFavorite=function(){
   if(litvUser){const q=cloudCelebPayload(p);existed?cloudDelete("/user/celeb-favorites",q):cloudPost("/user/celeb-favorites",q);}
 };
 
-// Explicitly synchronize after successful login/registration.
+// After login/registration: first download cloud data, merge it locally, then upload the merged set.
 const _litvSubmitAccount=submitAccount;
 submitAccount=async function(){
   await _litvSubmitAccount();
-  if(litvUser) await syncExistingLocalData(true);
+  if(litvUser) await syncCloudBothWays();
 };
 
-// Also synchronize after a valid saved session is restored.
+// After a saved session is restored, do the same two-way synchronization.
 const _litvRestoreAccount=restoreAccount;
 restoreAccount=async function(){
   await _litvRestoreAccount();
-  if(litvUser) await syncExistingLocalData(true);
+  if(litvUser) await syncCloudBothWays();
 };
+
+// Run account restore only after the V9.3 wrappers exist.
+restoreAccount();
 
 </script>
 
@@ -878,6 +962,7 @@ restoreAccount=async function(){
       <button id="accountSubmit" class="account-action" onclick="submitAccount()">Prihlásiť sa</button>
       <button id="accountSwitch" class="account-switch" onclick="switchAccountMode()">Nemáš účet? Zaregistrovať sa</button>
       <div id="accountMessage" class="account-error"></div>
+      <button class="account-action" onclick="closeAccount()">✕ Zavrieť</button>
     </div>
     <div id="accountProfile" style="display:none">
       <h2>👤 Môj účet</h2>
@@ -885,10 +970,11 @@ restoreAccount=async function(){
         <strong id="profileUsername"></strong><br>
         <span id="profileEmail"></span>
       </div>
-      <p>Účet je pripojený k LITV MOVIES D1. Lokálne dáta zostávajú zachované a cloud ich bezpečne kopíruje.</p>
+      <p>Účet je pripojený k LITV MOVIES D1. Dáta sa obojsmerne synchronizujú: cloud sa obnoví do tohto zariadenia a lokálne položky sa bezpečne uložia späť.</p>
       <div id="cloudSyncStatus" style="margin:10px 0;color:#aeb7c7">☁️ Cloud pripravený.</div>
-      <button class="account-action" onclick="syncExistingLocalData(true)">☁️ Synchronizovať teraz</button>
+      <button class="account-action" onclick="syncCloudBothWays()">☁️ Synchronizovať teraz</button>
       <button class="account-action" onclick="logoutAccount()">Odhlásiť sa</button>
+      <button class="account-action" onclick="closeAccount()">✕ Zavrieť</button>
     </div>
   </div>
 </div>
