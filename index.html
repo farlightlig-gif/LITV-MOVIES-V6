@@ -909,7 +909,15 @@ toggleFav=function(){
   if(!current)return;
   const item={...current},wasFavorite=hasFavorite(item);
   _litvOldToggleFav();
-  if(litvUser){const p=cloudMediaPayload(item,item.litv_source_category);wasFavorite?cloudDelete("/user/favorites",p):cloudPost("/user/favorites",p);}
+  if(litvUser){
+    const p=cloudMediaPayload(item,item.litv_source_category);
+    if(wasFavorite){
+      cloudDelete("/user/favorites",p);
+    }else{
+      // Additions use the same proven /user/sync route as the manual cloud sync.
+      syncExistingLocalData(true).catch(e=>console.warn("LITV automatic favorites sync:",e));
+    }
+  }
 };
 const _litvOldToggleWL=toggleWL;
 toggleWL=function(){
@@ -929,8 +937,19 @@ togglePersonFavorite=function(){
 // After login/registration: first download cloud data, merge it locally, then upload the merged set.
 const _litvSubmitAccount=submitAccount;
 submitAccount=async function(){
+  const wasRegister=litvAccountMode==="register";
   await _litvSubmitAccount();
-  if(litvUser) await syncCloudBothWays();
+  if(litvUser){
+    if(wasRegister){
+      const u=document.getElementById("accountUsername");
+      const e=document.getElementById("accountEmail");
+      const p=document.getElementById("accountPassword");
+      if(u)u.value="";
+      if(e)e.value="";
+      if(p)p.value="";
+    }
+    await syncCloudBothWays();
+  }
 };
 
 // After a saved session is restored, do the same two-way synchronization.
