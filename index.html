@@ -91,10 +91,8 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 <section>
 <div class="title">❤️ Obľúbené</div>
 <div class="subnav" style="margin-top:18px">
-<button class="active" id="favAllBtn" onclick="renderFavoritesMenu('all')">Všetko</button>
-<button id="favMoviesBtn" onclick="renderFavoritesMenu('movie')">🎬 Filmy</button>
-<button id="favSeriesBtn" onclick="renderFavoritesMenu('tv')">📺 Seriály</button>
-<button id="favTelenovelasBtn" onclick="renderFavoritesMenu('telenovela')">🌹 Telenovely</button>
+<button class="active" id="favMoviesBtn" onclick="renderFavoritesMenu('movie')">🎬 Filmy</button>
+<button id="favTvAllBtn" onclick="renderFavoritesMenu('tvall')">📺 Seriály + telenovely</button>
 </div>
 <div id="favorites" class="grid"></div>
 </section>
@@ -213,7 +211,7 @@ async function api(path){const r=await fetch(API+path);if(!r.ok)throw Error("API
 function hide(){document.querySelectorAll(".page").forEach(x=>x.style.display="none")}
 function home(){hide();document.getElementById("homePage").style.display="block";buildSections("homeSections","movie","home")}
 function searchPage(){hide();document.getElementById("searchPage").style.display="block";document.getElementById("q").focus()}
-function favoritesPage(){hide();document.getElementById("favoritesPage").style.display="block";renderFavoritesMenu("all")}
+function favoritesPage(){hide();document.getElementById("favoritesPage").style.display="block";renderFavoritesMenu("movie")}
 function watchlistPage(){hide();document.getElementById("watchlistPage").style.display="block";renderSaved("watchlist","litv_watchlist")}
 function celebPage(){hide();document.getElementById("celebPage").style.display="block";showCelebType(celebType)}
 
@@ -243,14 +241,21 @@ function allFavorites(){
  return [...get(FAV_KEYS.movie),...get(FAV_KEYS.tv),...get(FAV_KEYS.telenovela)];
 }
 function renderFavoritesMenu(type){
- const buttons={
-   all:"favAllBtn",movie:"favMoviesBtn",tv:"favSeriesBtn",telenovela:"favTelenovelasBtn"
- };
- Object.values(buttons).forEach(id=>document.getElementById(id).classList.remove("active"));
- document.getElementById(buttons[type]).classList.add("active");
+ const buttons={movie:"favMoviesBtn",tvall:"favTvAllBtn"};
+ Object.values(buttons).forEach(id=>document.getElementById(id)?.classList.remove("active"));
+ document.getElementById(buttons[type])?.classList.add("active");
  const box=document.getElementById("favorites");box.innerHTML="";
- const items=type==="all"?allFavorites():get(FAV_KEYS[type]);
- appendCards(box,items,type==="all"?null:type);
+
+ let items=[];
+ if(type==="movie"){
+   items=get(FAV_KEYS.movie);
+ }else{
+   const map=new Map();
+   [...get(FAV_KEYS.tv),...get(FAV_KEYS.telenovela)].forEach(x=>map.set(mediaKey(x),x));
+   items=[...map.values()];
+ }
+
+ appendCards(box,items);
  if(!items.length) box.innerHTML='<div class="empty">Zatiaľ tu nič nemáš.</div>';
 }
 function categoryFavorites(type){
@@ -506,7 +511,8 @@ function toggleFav(){
    renderCatalogFavoritesGrid(currentCatalog);
  }
  if(document.getElementById("favoritesPage").style.display==="block"){
-   renderFavoritesMenu("all");
+   const tvActive=document.getElementById("favTvAllBtn")?.classList.contains("active");
+   renderFavoritesMenu(tvActive?"tvall":"movie");
  }
 }
 function toggleWL(){
