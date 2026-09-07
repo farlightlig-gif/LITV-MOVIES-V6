@@ -35,6 +35,20 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
  .detail{padding:70px 5%}.poster{width:140px}.personGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.personHero{padding:70px 5%}.personPortrait{width:145px}.castCard{flex-basis:118px}
  section{padding:24px 4%}.title{font-size:22px}.showAll{font-size:12px;padding:8px 10px}.catalogHero{padding:34px 4% 16px}
 }
+
+/* LITV V9 ACCOUNT */
+.account-btn{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;border-radius:999px;padding:10px 15px;font-weight:800;cursor:pointer}
+.account-modal{display:none;position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.78);backdrop-filter:blur(10px);overflow:auto;padding:24px}
+.account-card{max-width:460px;margin:7vh auto;background:#11151d;border:1px solid rgba(255,255,255,.13);border-radius:24px;padding:24px;box-shadow:0 25px 80px rgba(0,0,0,.55)}
+.account-card h2{margin:0 0 8px}.account-card p{color:#aeb7c7}
+.account-field{width:100%;box-sizing:border-box;margin:7px 0;padding:13px 14px;border-radius:13px;border:1px solid rgba(255,255,255,.14);background:#090c12;color:#fff;outline:none}
+.account-action{width:100%;margin-top:10px;padding:13px;border:0;border-radius:13px;font-weight:900;cursor:pointer}
+.account-switch{background:none;border:0;color:#9fc6ff;cursor:pointer;padding:10px 0}
+.account-error{min-height:22px;color:#ff8d8d;margin-top:8px}.account-ok{color:#8df0ad}
+.account-close{float:right;background:none;border:0;color:#fff;font-size:25px;cursor:pointer}
+.account-profile{padding:15px;border-radius:16px;background:rgba(255,255,255,.06);margin:15px 0}
+@media(max-width:700px){.account-modal{padding:12px}.account-card{margin:3vh auto;padding:19px}}
+
 </style>
 </head>
 <body>
@@ -653,6 +667,123 @@ function togglePersonFavorite(){
 function closePerson(){document.getElementById("personDetail").style.display="none";document.body.style.overflow="";currentPerson=null}
 
 home();
+
+// ===== LITV V9 ACCOUNT =====
+const LITV_AUTH_API="https://litv-movie-api.cartermilan83.workers.dev";
+const LITV_AUTH_TOKEN_KEY="litv_auth_token";
+let litvAccountMode="login";
+let litvUser=null;
+
+async function authRequest(path,options={}){
+  const token=localStorage.getItem(LITV_AUTH_TOKEN_KEY);
+  const headers={"Content-Type":"application/json",...(options.headers||{})};
+  if(token)headers.Authorization="Bearer "+token;
+  const r=await fetch(LITV_AUTH_API+path,{...options,headers});
+  let d={};
+  try{d=await r.json()}catch(e){}
+  if(!r.ok)throw new Error(d.error||"Požiadavka zlyhala.");
+  return d;
+}
+function openAccount(){
+  document.getElementById("accountModal").style.display="block";
+  refreshAccountUI();
+}
+function closeAccount(){document.getElementById("accountModal").style.display="none"}
+function switchAccountMode(){
+  litvAccountMode=litvAccountMode==="login"?"register":"login";
+  const reg=litvAccountMode==="register";
+  document.getElementById("accountTitle").textContent=reg?"✨ Registrácia":"👤 Prihlásenie";
+  document.getElementById("registerNameWrap").style.display=reg?"block":"none";
+  document.getElementById("accountLogin").style.display=reg?"none":"block";
+  document.getElementById("accountEmail").style.display=reg?"block":"none";
+  document.getElementById("accountSubmit").textContent=reg?"Vytvoriť účet":"Prihlásiť sa";
+  document.getElementById("accountSwitch").textContent=reg?"Už máš účet? Prihlásiť sa":"Nemáš účet? Zaregistrovať sa";
+  document.getElementById("accountMessage").textContent="";
+}
+async function submitAccount(){
+  const msg=document.getElementById("accountMessage");
+  msg.className="account-error";msg.textContent="Pracujem...";
+  try{
+    let d;
+    if(litvAccountMode==="register"){
+      d=await authRequest("/auth/register",{method:"POST",body:JSON.stringify({
+        username:document.getElementById("accountUsername").value.trim(),
+        email:document.getElementById("accountEmail").value.trim(),
+        password:document.getElementById("accountPassword").value
+      })});
+    }else{
+      d=await authRequest("/auth/login",{method:"POST",body:JSON.stringify({
+        login:document.getElementById("accountLogin").value.trim(),
+        password:document.getElementById("accountPassword").value
+      })});
+    }
+    localStorage.setItem(LITV_AUTH_TOKEN_KEY,d.token);
+    litvUser=d.user;
+    msg.textContent="";
+    refreshAccountUI();
+  }catch(e){msg.textContent=e.message||"Nepodarilo sa prihlásiť.";}
+}
+function logoutAccount(){
+  localStorage.removeItem(LITV_AUTH_TOKEN_KEY);
+  litvUser=null;
+  refreshAccountUI();
+}
+function refreshAccountUI(){
+  const logged=!!litvUser;
+  document.getElementById("accountGuest").style.display=logged?"none":"block";
+  document.getElementById("accountProfile").style.display=logged?"block":"none";
+  document.getElementById("accountBtn").textContent=logged?"👤 "+litvUser.username:"👤 Účet";
+  if(logged){
+    document.getElementById("profileUsername").textContent=litvUser.username||"";
+    document.getElementById("profileEmail").textContent=litvUser.email||"";
+  }
+}
+async function restoreAccount(){
+  const token=localStorage.getItem(LITV_AUTH_TOKEN_KEY);
+  if(!token){refreshAccountUI();return;}
+  try{
+    const d=await authRequest("/auth/me");
+    litvUser=d.user;
+  }catch(e){
+    localStorage.removeItem(LITV_AUTH_TOKEN_KEY);
+    litvUser=null;
+  }
+  refreshAccountUI();
+}
+document.getElementById("accountModal").addEventListener("click",e=>{if(e.target.id==="accountModal")closeAccount()});
+restoreAccount();
+
 </script>
+
+<button id="accountBtn" class="account-btn" onclick="openAccount()" style="position:fixed;right:18px;bottom:18px;z-index:90">👤 Účet</button>
+
+<div id="accountModal" class="account-modal">
+  <div class="account-card">
+    <button class="account-close" onclick="closeAccount()">×</button>
+    <div id="accountGuest">
+      <h2 id="accountTitle">👤 Prihlásenie</h2>
+      <p id="accountSubtitle">Prihlás sa do LITV MOVIES a priprav si cloudovú synchronizáciu.</p>
+      <div id="registerNameWrap" style="display:none">
+        <input id="accountUsername" class="account-field" maxlength="30" placeholder="Používateľské meno">
+      </div>
+      <input id="accountLogin" class="account-field" placeholder="E-mail alebo používateľské meno">
+      <input id="accountEmail" class="account-field" type="email" placeholder="E-mail" style="display:none">
+      <input id="accountPassword" class="account-field" type="password" placeholder="Heslo (min. 8 znakov)">
+      <button id="accountSubmit" class="account-action" onclick="submitAccount()">Prihlásiť sa</button>
+      <button id="accountSwitch" class="account-switch" onclick="switchAccountMode()">Nemáš účet? Zaregistrovať sa</button>
+      <div id="accountMessage" class="account-error"></div>
+    </div>
+    <div id="accountProfile" style="display:none">
+      <h2>👤 Môj účet</h2>
+      <div class="account-profile">
+        <strong id="profileUsername"></strong><br>
+        <span id="profileEmail"></span>
+      </div>
+      <p>Účet je pripojený k LITV MOVIES D1. Tvoje súčasné lokálne Obľúbené a Watchlist zatiaľ zostávajú nedotknuté.</p>
+      <button class="account-action" onclick="logoutAccount()">Odhlásiť sa</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
