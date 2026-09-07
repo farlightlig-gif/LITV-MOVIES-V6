@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LITV MOVIES</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080808;color:#fff;font-family:Arial,sans-serif}
+nav{position:sticky;top:0;z-index:50;background:#090909;border-bottom:1px solid #222;padding:14px 5%;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.logo{font-size:25px;font-weight:900;white-space:nowrap}.logo b{color:#e50914}
+.nav{display:flex;gap:4px;flex-wrap:wrap}.nav button{background:none;border:0;color:#aaa;padding:9px 7px;cursor:pointer;font-size:15px}.nav button:hover,.nav button.active{color:#fff}
+.search{margin-left:auto;display:flex;width:320px}.search input{flex:1;background:#151515;color:#fff;border:1px solid #333;padding:11px;border-radius:7px 0 0 7px;outline:none}.search button{border:0;background:#e50914;color:#fff;padding:0 16px;border-radius:0 7px 7px 0;font-weight:bold;cursor:pointer}
+.hero{padding:80px 6%;min-height:390px;display:flex;align-items:center;background:radial-gradient(circle at 75% 30%,#42090d,transparent 45%),linear-gradient(135deg,#151515,#080808)}
+.hero h1{font-size:clamp(42px,7vw,76px);line-height:.95;margin:10px 0}.hero p{color:#aaa;font-size:17px;line-height:1.6;max-width:600px}.red{color:#e50914;font-weight:bold;letter-spacing:3px}
+.hero button,.action{background:#e50914;color:#fff;border:0;border-radius:7px;padding:13px 20px;font-weight:bold;cursor:pointer}.secondary{background:#222!important}
+section{padding:30px 5%}.title{font-size:27px;font-weight:bold;margin-bottom:16px}
+.rail{display:flex;gap:16px;overflow-x:auto;padding:4px 2px 18px;scroll-behavior:smooth}.rail::-webkit-scrollbar{height:7px}.rail::-webkit-scrollbar-thumb{background:#333;border-radius:8px}
+.movie{flex:0 0 170px;background:#121212;border-radius:10px;overflow:hidden;cursor:pointer;position:relative;transition:.2s}.movie:hover{transform:translateY(-5px)}
+.movie img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#171717}.info{padding:11px}.name{font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:7px}.meta{display:flex;justify-content:space-between;color:#888;font-size:13px}.rating{color:#f5c518}.badge{position:absolute;top:8px;right:8px;background:#e50914;border-radius:20px;padding:5px 8px}
+#moviesPage,#searchPage,#favoritesPage,#watchlistPage,#celebPage{display:none}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:18px}.empty,.status{color:#888;padding:20px 0}
+.railbox{position:relative}.arrows{position:absolute;right:0;top:-54px;display:flex;gap:7px}.arrows button{width:36px;height:36px;border-radius:50%;background:#171717;border:1px solid #333;color:#fff;font-size:20px;cursor:pointer}
+#detail,#personDetail{display:none;position:fixed;inset:0;z-index:100;background:#080808;overflow:auto}.close{position:fixed;right:22px;top:18px;z-index:110;width:45px;height:45px;border:0;border-radius:50%;background:#e50914;color:#fff;font-size:25px;cursor:pointer}
+.detail{min-height:100vh;padding:80px 7%;display:flex;align-items:center;background-position:center;background-size:cover;position:relative}.detail:after{content:"";position:absolute;inset:0;background:linear-gradient(to right,#080808 5%,transparent 85%),linear-gradient(to top,#080808 3%,transparent 75%)}.detailin{position:relative;z-index:2;max-width:720px}.poster{width:180px;border-radius:10px}.detail h1{font-size:clamp(40px,6vw,70px);margin:18px 0}.detail p{color:#ccc;line-height:1.7}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
+.subnav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:25px}.subnav button{background:#171717;border:1px solid #333;color:#ddd;padding:11px 17px;border-radius:8px;cursor:pointer}.subnav button.active,.subnav button:hover{background:#e50914;color:#fff;border-color:#e50914}
+.personGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:18px}.person{background:#121212;border-radius:12px;overflow:hidden;cursor:pointer;transition:.2s;position:relative}.person:hover{transform:translateY(-5px)}.person img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#171717}.personInfo{padding:12px}.personName{font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.personDept{color:#888;font-size:13px;margin-top:6px}
+.personSearch{display:flex;max-width:600px;margin:0 0 30px}.personSearch input{flex:1;background:#151515;color:#fff;border:1px solid #333;padding:13px;border-radius:8px 0 0 8px;outline:none;font-size:16px}.personSearch button{border:0;background:#e50914;color:#fff;padding:0 20px;border-radius:0 8px 8px 0;font-weight:bold;cursor:pointer}
+.personHero{min-height:100vh;padding:80px 7%;background-size:cover;background-position:center;position:relative}.personHero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#080808 8%,rgba(8,8,8,.88) 48%,rgba(8,8,8,.35)),linear-gradient(0deg,#080808 0%,transparent 65%)}.personContent{position:relative;z-index:2;max-width:900px}.personPortrait{width:190px;border-radius:14px;box-shadow:0 20px 60px #000}.personHero h1{font-size:clamp(42px,7vw,75px);margin:18px 0 8px}.personMeta{color:#aaa}.personBio{color:#ccc;line-height:1.7;max-width:720px}.personFav{margin-top:18px}.personMovies{margin-top:45px}.personMovies .rail{max-width:100%}
+@media(max-width:700px){nav{padding:12px 4%}.nav{order:3;width:100%;justify-content:center}.search{width:100%;margin-left:0}.hero{padding:65px 5%}.movie{flex-basis:145px}.detail{padding:70px 5%}.poster{width:140px}.personGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.personHero{padding:70px 5%}.personPortrait{width:145px}}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">LI<b>TV</b> MOVIES</div>
+<div class="nav">
+<button id="homeBtn" class="active" onclick="home()">🏠 Domov</button>
+<button onclick="moviesPage()">🎬 Filmy</button>
+<button onclick="searchPage()">🔎 Hľadať</button>
+<button onclick="celebPage()">⭐ Celeb</button>
+<button onclick="favoritesPage()">❤️ Obľúbené</button>
+<button onclick="watchlistPage()">🔖 Watchlist</button>
+</div>
+<div class="search"><input id="q" placeholder="Hľadať film..."><button onclick="search()">Hľadať</button></div>
+</nav>
+
+<div id="homePage">
+<div class="hero"><div><div class="red">LITV MOVIES</div><h1>Objav svoj<br>ďalší film.</h1><p>Vyhľadávaj filmy, objavuj nové príbehy a nájdi si niečo na večer.</p><button onclick="searchPage()">🔎 HĽADAŤ FILM</button></div></div>
+<section><div class="title">🎲 Náhodné filmy</div><div class="railbox"><div class="arrows"><button onclick="scrollRail('random',-1)">‹</button><button onclick="scrollRail('random',1)">›</button></div><div id="random" class="rail">Načítavam...</div></div></section>
+<section><div class="title">🔥 Práve vychádzajúce</div><div class="railbox"><div class="arrows"><button onclick="scrollRail('now',-1)">‹</button><button onclick="scrollRail('now',1)">›</button></div><div id="now" class="rail">Načítavam...</div></div></section>
+<section><div class="title">📅 Čoskoro vychádzajúce</div><div class="railbox"><div class="arrows"><button onclick="scrollRail('upcoming',-1)">‹</button><button onclick="scrollRail('upcoming',1)">›</button></div><div id="upcoming" class="rail">Načítavam...</div></div></section>
+<section><div class="title">⭐ Najlepšie hodnotené</div><div class="railbox"><div class="arrows"><button onclick="scrollRail('top',-1)">‹</button><button onclick="scrollRail('top',1)">›</button></div><div id="top" class="rail">Načítavam...</div></div></section>
+</div>
+
+<div id="moviesPage"><section><div class="title">🎬 Filmy</div><p class="empty">Použi vyhľadávanie na nájdenie filmu.</p></section></div>
+<div id="searchPage"><section><div class="title" id="searchTitle">🔎 Výsledky</div><div id="status" class="status"></div><div id="results" class="grid"></div></section></div>
+<div id="favoritesPage"><section><div class="title">❤️ Obľúbené filmy</div><div id="favorites" class="grid"></div></section></div>
+<div id="watchlistPage"><section><div class="title">🔖 Watchlist</div><div id="watchlist" class="grid"></div></section></div>
+
+<div id="celebPage">
+<section>
+<div class="title">⭐ CELEB</div>
+<div class="subnav">
+<button id="actorsBtn" class="active" onclick="showCelebType('actors')">👨 Herci</button>
+<button id="actressesBtn" onclick="showCelebType('actresses')">👩 Herečky</button>
+<button onclick="showCelebType('favorites')">❤️ Moje obľúbené</button>
+</div>
+<div class="personSearch"><input id="personQuery" placeholder="Vyhľadať herca alebo herečku..."><button onclick="searchPeople()">Hľadať</button></div>
+<div id="celebStatus" class="status">Vyber kategóriu alebo vyhľadaj celebritu.</div>
+<div id="people" class="personGrid"></div>
+</section>
+</div>
+
+<div id="detail"><button class="close" onclick="closeDetail()">×</button><div id="detailBg" class="detail"><div class="detailin"><img id="poster" class="poster"><h1 id="dt"></h1><div id="dm" style="color:#aaa"></div><p id="desc"></p><div class="actions"><button id="fav" class="action" onclick="toggleFav()">❤️ Obľúbené</button><button id="wl" class="action secondary" onclick="toggleWL()">🔖 Watchlist</button></div></div></div></div>
+
+<div id="personDetail"><button class="close" onclick="closePerson()">×</button><div id="personHero" class="personHero"><div class="personContent"><img id="personPortrait" class="personPortrait"><h1 id="personTitle"></h1><div id="personMeta" class="personMeta"></div><p id="personBio" class="personBio"></p><button id="personFav" class="action personFav" onclick="togglePersonFavorite()">❤️ Pridať medzi obľúbených</button><div class="personMovies"><div class="title">🎬 Filmy a seriály</div><div id="personCredits" class="rail">Načítavam...</div></div></div></div></div>
+
+<script>
+const API="https://litv-movie-api.cartermilan83.workers.dev";
+let current=null, currentPerson=null, loaded=false, celebType="actors";
+const get=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]")}catch(e){return[]}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const has=(k,m)=>get(k).some(x=>String(x.id)===String(m.id));
+const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+
+function hide(){["homePage","moviesPage","searchPage","favoritesPage","watchlistPage","celebPage"].forEach(x=>document.getElementById(x).style.display="none")}
+function home(){hide();document.getElementById("homePage").style.display="block";loadHome()}
+function moviesPage(){hide();document.getElementById("moviesPage").style.display="block"}
+function searchPage(){hide();document.getElementById("searchPage").style.display="block";document.getElementById("q").focus()}
+function favoritesPage(){hide();document.getElementById("favoritesPage").style.display="block";renderSaved("favorites","litv_favorites")}
+function watchlistPage(){hide();document.getElementById("watchlistPage").style.display="block";renderSaved("watchlist","litv_watchlist")}
+function celebPage(){hide();document.getElementById("celebPage").style.display="block";showCelebType(celebType)}
+
+function card(m){
+ const d=document.createElement("div");d.className="movie";
+ const img=m.poster_path?"https://image.tmdb.org/t/p/w500"+m.poster_path:"";
+ d.innerHTML=(has("litv_favorites",m)?'<div class="badge">❤️</div>':"")+
+ '<img src="'+img+'" loading="lazy" alt="'+esc(m.title||"Film")+'"><div class="info"><div class="name">'+esc(m.title||"Bez názvu")+
+ '</div><div class="meta"><span>'+(m.release_date?(m.release_date+"").slice(0,4):"—")+'</span><span class="rating">★ '+(m.vote_average?Number(m.vote_average).toFixed(1):"—")+'</span></div></div>';
+ d.onclick=()=>openDetail(m);return d;
+}
+function render(id,list){const e=document.getElementById(id);e.innerHTML="";(list||[]).filter(m=>m.poster_path).forEach(m=>e.appendChild(card(m)))}
+function renderSaved(id,key){render(id,get(key));if(!get(key).length)document.getElementById(id).innerHTML='<div class="empty">Zatiaľ tu nemáš žiadne filmy.</div>'}
+async function api(path){const r=await fetch(API+path);if(!r.ok)throw Error();return r.json()}
+function shuffle(a){return [...a].sort(()=>Math.random()-.5)}
+async function loadHome(){
+ if(loaded)return;loaded=true;
+ try{
+  const [tr,now,top]=await Promise.all([api("/trending"),api("/now-playing"),api("/top-rated")]);
+  render("random",shuffle(tr.results||[]).slice(0,20));render("now",now.results||[]);render("top",top.results||[]);
+  try{const up=await api("/upcoming");render("upcoming",up.results||[])}
+  catch(e){document.getElementById("upcoming").innerHTML='<div class="empty">Čoskoro vychádzajúce filmy zatiaľ API neposkytuje.</div>'}
+ }catch(e){["random","now","upcoming","top"].forEach(id=>document.getElementById(id).innerHTML='<div class="empty">Nepodarilo sa načítať filmy.</div>')}
+}
+function scrollRail(id,d){document.getElementById(id).scrollBy({left:d*560,behavior:"smooth"})}
+async function search(){
+ const q=document.getElementById("q").value.trim();if(!q)return;searchPage();
+ const st=document.getElementById("status"),r=document.getElementById("results");st.textContent="Vyhľadávam...";r.innerHTML="";
+ try{const d=await fetch(API+"/search?query="+encodeURIComponent(q)).then(x=>x.json());document.getElementById("searchTitle").textContent='🔎 Výsledky pre "'+q+'"';st.textContent="Nájdené filmy: "+(d.results||[]).length;render("results",d.results||[])}
+ catch(e){st.textContent="Nepodarilo sa načítať filmy."}
+}
+document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")search()});
+
+function openDetail(m){
+ current=m;const bg=document.getElementById("detailBg");bg.style.backgroundImage=m.backdrop_path?"url(https://image.tmdb.org/t/p/original"+m.backdrop_path+")":"none";
+ document.getElementById("poster").src=m.poster_path?"https://image.tmdb.org/t/p/w500"+m.poster_path:"";
+ document.getElementById("dt").textContent=m.title||"Bez názvu";document.getElementById("dm").textContent=(m.release_date?(m.release_date+"").slice(0,4):"—")+" • ★ "+(m.vote_average?Number(m.vote_average).toFixed(1):"—");document.getElementById("desc").textContent=m.overview||"Popis filmu nie je dostupný.";
+ updateButtons();document.getElementById("detail").style.display="block"
+}
+function updateButtons(){document.getElementById("fav").textContent=has("litv_favorites",current)?"❤️ Odstrániť z obľúbených":"❤️ Pridať do obľúbených";document.getElementById("wl").textContent=has("litv_watchlist",current)?"🔖 Odstrániť z watchlistu":"🔖 Pridať do watchlistu"}
+function toggle(k){let a=get(k),i=a.findIndex(x=>String(x.id)===String(current.id));i>=0?a.splice(i,1):a.unshift(current);save(k,a);updateButtons()}
+function toggleFav(){toggle("litv_favorites")}
+function toggleWL(){toggle("litv_watchlist")}
+function closeDetail(){document.getElementById("detail").style.display="none";current=null}
+
+function setCelebButtons(){
+ document.getElementById("actorsBtn").classList.toggle("active",celebType==="actors");
+ document.getElementById("actressesBtn").classList.toggle("active",celebType==="actresses");
+}
+async function showCelebType(type){
+ celebType=type;setCelebButtons();document.getElementById("people").innerHTML="";document.getElementById("celebStatus").textContent="Načítavam...";
+ if(type==="favorites"){renderPeople(get("litv_celeb_favorites"));document.getElementById("celebStatus").textContent=get("litv_celeb_favorites").length?"Moje obľúbené celebrity":"Zatiaľ nemáš žiadne obľúbené celebrity.";return}
+ try{
+  const d=await api("/person-popular?gender="+(type==="actors"?"male":"female"));
+  const list=(d.results||[]).filter(p=>p.profile_path);
+  renderPeople(list);document.getElementById("celebStatus").textContent=(type==="actors"?"Herci":"Herečky")+" • "+list.length;
+ }catch(e){document.getElementById("celebStatus").textContent="Celebrity API zatiaľ nie je pripojené. Nižšie je pripravené celé rozhranie."; }
+}
+async function searchPeople(){
+ const q=document.getElementById("personQuery").value.trim();if(!q)return;
+ document.getElementById("celebStatus").textContent="Vyhľadávam celebritu...";document.getElementById("people").innerHTML="";
+ try{const d=await api("/person-search?query="+encodeURIComponent(q));const list=(d.results||[]).filter(p=>p.profile_path);renderPeople(list);document.getElementById("celebStatus").textContent="Nájdené celebrity: "+list.length}
+ catch(e){document.getElementById("celebStatus").textContent="Vyhľadávanie celebrít potrebuje nový endpoint v LITV API."}
+}
+document.getElementById("personQuery").addEventListener("keydown",e=>{if(e.key==="Enter")searchPeople()});
+
+function renderPeople(list){
+ const box=document.getElementById("people");box.innerHTML="";
+ (list||[]).forEach(p=>{
+  const d=document.createElement("div");d.className="person";
+  const img=p.profile_path?"https://image.tmdb.org/t/p/w500"+p.profile_path:"";
+  d.innerHTML=(has("litv_celeb_favorites",p)?'<div class="badge">❤️</div>':"")+
+   '<img src="'+img+'" loading="lazy" alt="'+esc(p.name)+'"><div class="personInfo"><div class="personName">'+esc(p.name)+'</div><div class="personDept">'+esc(p.known_for_department||"Herec / herečka")+'</div></div>';
+  d.onclick=()=>openPerson(p);box.appendChild(d);
+ });
+}
+async function openPerson(p){
+ currentPerson=p;
+ document.getElementById("personDetail").style.display="block";
+ document.getElementById("personTitle").textContent=p.name||"Celebrity";
+ document.getElementById("personPortrait").src=p.profile_path?"https://image.tmdb.org/t/p/w500"+p.profile_path:"";
+ document.getElementById("personMeta").textContent=p.known_for_department||"Herec / herečka";
+ document.getElementById("personBio").textContent="Načítavam informácie o osobnosti...";
+ document.getElementById("personHero").style.backgroundImage=p.profile_path?"linear-gradient(90deg,#080808 8%,rgba(8,8,8,.88) 48%,rgba(8,8,8,.35)),url(https://image.tmdb.org/t/p/original"+p.profile_path+")":"";
+ updatePersonFavorite();
+ try{
+  const d=await api("/person/"+encodeURIComponent(p.id));
+  const person=d.person||d;
+  document.getElementById("personTitle").textContent=person.name||p.name;
+  document.getElementById("personMeta").textContent=(person.birthday?person.birthday+" • ":"")+(person.place_of_birth||person.known_for_department||"");
+  document.getElementById("personBio").textContent=person.biography||"Životopis nie je dostupný.";
+  const credits=d.credits||d.cast||[];
+  const box=document.getElementById("personCredits");box.innerHTML="";
+  credits.filter(x=>x.poster_path).slice(0,30).forEach(x=>box.appendChild(card(x)));
+ }catch(e){document.getElementById("personBio").textContent="Profil celebrity je pripravený, ale LITV API zatiaľ nemá person endpoint."}
+}
+function updatePersonFavorite(){document.getElementById("personFav").textContent=has("litv_celeb_favorites",currentPerson)?"❤️ Odstrániť z obľúbených":"❤️ Pridať medzi obľúbených"}
+function togglePersonFavorite(){
+ let a=get("litv_celeb_favorites"),i=a.findIndex(x=>String(x.id)===String(currentPerson.id));
+ i>=0?a.splice(i,1):a.unshift(currentPerson);save("litv_celeb_favorites",a);updatePersonFavorite();
+}
+function closePerson(){document.getElementById("personDetail").style.display="none";currentPerson=null}
+loadHome();
+</script>
+</body>
+</html>
