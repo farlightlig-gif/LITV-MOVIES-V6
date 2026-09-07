@@ -94,6 +94,9 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 <button class="active" id="favMoviesBtn" onclick="renderFavoritesMenu('movie')">🎬 Filmy</button>
 <button id="favTvAllBtn" onclick="renderFavoritesMenu('tvall')">📺 Seriály + telenovely</button>
 </div>
+<div class="personSearch" style="margin-top:14px">
+<input id="favoritesQuery" placeholder="Hľadať v obľúbených..." oninput="filterFavorites()">
+</div>
 <div id="favorites" class="grid"></div>
 </section>
 </div>
@@ -106,7 +109,8 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 <div class="subnav">
 <button id="actorsBtn" class="active" onclick="showCelebType('actors')">👨 Herci</button>
 <button id="actressesBtn" onclick="showCelebType('actresses')">👩 Herečky</button>
-<button onclick="showCelebType('favorites')">❤️ Moje obľúbené</button>
+<button id="favActorsBtn" onclick="showCelebType('favActors')">❤️ Obľúbení herci</button>
+<button id="favActressesBtn" onclick="showCelebType('favActresses')">❤️ Obľúbené herečky</button>
 </div>
 <div class="personSearch"><input id="personQuery" placeholder="Vyhľadať herca alebo herečku..."><button onclick="searchPeople()">Hľadať</button></div>
 <div id="celebStatus" class="status"></div><div id="people" class="personGrid"></div>
@@ -233,7 +237,7 @@ async function api(path){const r=await fetch(API+path);if(!r.ok)throw Error("API
 function hide(){document.querySelectorAll(".page").forEach(x=>x.style.display="none")}
 function home(){hide();document.getElementById("homePage").style.display="block";buildSections("homeSections","movie","home")}
 function searchPage(){hide();document.getElementById("searchPage").style.display="block";document.getElementById("q").focus()}
-function favoritesPage(){hide();document.getElementById("favoritesPage").style.display="block";renderFavoritesMenu("movie")}
+function favoritesPage(){hide();document.getElementById("favoritesPage").style.display="block";const q=document.getElementById("favoritesQuery");if(q)q.value="";renderFavoritesMenu("movie")}
 function watchlistPage(){hide();document.getElementById("watchlistPage").style.display="block";renderSaved("watchlist","litv_watchlist")}
 function celebPage(){hide();document.getElementById("celebPage").style.display="block";showCelebType(celebType)}
 
@@ -266,23 +270,28 @@ function renderSaved(id,key){
 function allFavorites(){
  return [...get(FAV_KEYS.movie),...get(FAV_KEYS.tv),...get(FAV_KEYS.telenovela)];
 }
+let currentFavoritesType="movie";
+function favoritesItems(type){
+ if(type==="movie") return get(FAV_KEYS.movie);
+ const map=new Map();
+ [...get(FAV_KEYS.tv),...get(FAV_KEYS.telenovela)].forEach(x=>map.set(mediaKey(x),x));
+ return [...map.values()];
+}
 function renderFavoritesMenu(type){
+ currentFavoritesType=type;
  const buttons={movie:"favMoviesBtn",tvall:"favTvAllBtn"};
  Object.values(buttons).forEach(id=>document.getElementById(id)?.classList.remove("active"));
  document.getElementById(buttons[type])?.classList.add("active");
- const box=document.getElementById("favorites");box.innerHTML="";
-
- let items=[];
- if(type==="movie"){
-   items=get(FAV_KEYS.movie);
- }else{
-   const map=new Map();
-   [...get(FAV_KEYS.tv),...get(FAV_KEYS.telenovela)].forEach(x=>map.set(mediaKey(x),x));
-   items=[...map.values()];
- }
-
+ filterFavorites();
+}
+function filterFavorites(){
+ const box=document.getElementById("favorites");if(!box)return;
+ box.innerHTML="";
+ const q=(document.getElementById("favoritesQuery")?.value||"").trim().toLowerCase();
+ let items=favoritesItems(currentFavoritesType);
+ if(q) items=items.filter(x=>mediaTitle(x).toLowerCase().includes(q));
  appendCards(box,items);
- if(!items.length) box.innerHTML='<div class="empty">Zatiaľ tu nič nemáš.</div>';
+ if(!items.length) box.innerHTML='<div class="empty">'+(q?'Nič sa nenašlo.':'Zatiaľ tu nič nemáš.')+'</div>';
 }
 function categoryFavorites(type){
  const direct=get(FAV_KEYS[type]);
@@ -561,14 +570,21 @@ function closeDetail(){document.getElementById("detail").style.display="none";do
 function setCelebButtons(){
  document.getElementById("actorsBtn").classList.toggle("active",celebType==="actors");
  document.getElementById("actressesBtn").classList.toggle("active",celebType==="actresses");
+ document.getElementById("favActorsBtn")?.classList.toggle("active",celebType==="favActors");
+ document.getElementById("favActressesBtn")?.classList.toggle("active",celebType==="favActresses");
 }
 async function showCelebType(type){
  celebType=type;setCelebButtons();
  const box=document.getElementById("people");box.innerHTML="";
  document.getElementById("celebStatus").textContent="Načítavam...";
- if(type==="favorites"){
-   const a=get("litv_celeb_favorites");renderPeople(a);
-   document.getElementById("celebStatus").textContent=a.length?"Moje obľúbené celebrity":"Zatiaľ nemáš obľúbené celebrity.";
+ if(type==="favActors"||type==="favActresses"){
+   const wantedGender=type==="favActors"?2:1;
+   const all=get("litv_celeb_favorites");
+   const a=all.filter(p=>Number(p.gender)===wantedGender);
+   renderPeople(a);
+   document.getElementById("celebStatus").textContent=a.length
+     ?(type==="favActors"?"Obľúbení herci • ":"Obľúbené herečky • ")+a.length
+     :(type==="favActors"?"Zatiaľ nemáš obľúbených hercov.":"Zatiaľ nemáš obľúbené herečky.");
    return;
  }
  try{
@@ -632,6 +648,7 @@ function togglePersonFavorite(){
  let a=get("litv_celeb_favorites"),i=a.findIndex(x=>String(x.id)===String(currentPerson.id));
  i>=0?a.splice(i,1):a.unshift(currentPerson);
  save("litv_celeb_favorites",a);updatePersonFavorite();
+ if(celebType==="favActors"||celebType==="favActresses") showCelebType(celebType);
 }
 function closePerson(){document.getElementById("personDetail").style.display="none";document.body.style.overflow="";currentPerson=null}
 
