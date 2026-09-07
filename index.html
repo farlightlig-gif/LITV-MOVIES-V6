@@ -754,99 +754,110 @@ document.getElementById("accountModal").addEventListener("click",e=>{if(e.target
 restoreAccount();
 
 
-// ===== LITV V9.1 CLOUD SYNC =====
-const LITV_SYNC_MARKER="litv_cloud_sync_v1";
-
-function cloudMediaPayload(m){
-  const source=m?.litv_source_category||m?.litv_type||mediaType(m);
+// ===== LITV V9.2 ROBUST CLOUD SYNC =====
+function cloudMediaPayload(m, forcedType){
+  const source=forcedType||m?.litv_source_category||m?.litv_type||mediaType(m);
   return {
     tmdb_id:Number(m.id),
-    media_type:source==="movie"?"movie":"tv",
+    media_type:source==="movie"?"movie":source==="telenovela"?"telenovela":"tv",
     title:mediaTitle(m),
     poster_path:m.poster_path||null
   };
 }
 function cloudCelebPayload(p){
-  return {
-    tmdb_id:Number(p.id),
-    name:p.name||"",
-    gender:p.gender==null?null:Number(p.gender),
-    profile_path:p.profile_path||null
-  };
+  return {tmdb_id:Number(p.id),name:p.name||"",gender:p.gender==null?null:Number(p.gender),profile_path:p.profile_path||null};
 }
 async function cloudPost(path,obj){
   if(!litvUser)return;
-  try{ await authRequest(path,{method:"POST",body:JSON.stringify(obj)}); }
-  catch(e){ console.warn("LITV cloud save:",e); }
+  try{await authRequest(path,{method:"POST",body:JSON.stringify(obj)});}catch(e){console.warn("LITV cloud save:",e);}
 }
 async function cloudDelete(path,obj){
   if(!litvUser)return;
-  try{ await authRequest(path,{method:"DELETE",body:JSON.stringify(obj)}); }
-  catch(e){ console.warn("LITV cloud delete:",e); }
+  try{await authRequest(path,{method:"DELETE",body:JSON.stringify(obj)});}catch(e){console.warn("LITV cloud delete:",e);}
 }
-async function syncExistingLocalData(){
-  if(!litvUser || localStorage.getItem(LITV_SYNC_MARKER)==="1") return;
+function collectLocalCloudData(){
+  const favMap=new Map();
+  const add=(arr,type)=>arr.forEach(x=>{
+    const p=cloudMediaPayload(x,type);
+    if(Number.isInteger(p.tmdb_id)) favMap.set(p.media_type+":"+p.tmdb_id,p);
+  });
+  add(get("litv_favorites_movies"),"movie");
+  add(get("litv_favorites_series"),"tv");
+  add(get("litv_favorites_telenovelas"),"telenovela");
+  // Include legacy/shared favorites too, without replacing category data.
+  get("litv_favorites").forEach(x=>{
+    const p=cloudMediaPayload(x);
+    if(Number.isInteger(p.tmdb_id) && !favMap.has(p.media_type+":"+p.tmdb_id)) favMap.set(p.media_type+":"+p.tmdb_id,p);
+  });
+  const watchlist=get("litv_watchlist").map(x=>cloudMediaPayload(x));
+  const celeb_favorites=get("litv_celeb_favorites").map(cloudCelebPayload);
+  return {favorites:[...favMap.values()],watchlist,celeb_favorites};
+}
+async function syncChunked(data){
+  const all=[];
+  data.favorites.forEach(x=>all.push(["favorites",x]));
+  data.watchlist.forEach(x=>all.push(["watchlist",x]));
+  data.celeb_favorites.forEach(x=>all.push(["celeb_favorites",x]));
+  let imported=0;
+  for(let i=0;i<all.length;i+=50){
+    const body={favorites:[],watchlist:[],celeb_favorites:[]};
+    all.slice(i,i+50).forEach(([k,x])=>body[k].push(x));
+    const d=await authRequest("/user/sync",{method:"POST",body:JSON.stringify(body)});
+    imported+=Number(d.imported||0);
+  }
+  return imported;
+}
+async function syncExistingLocalData(force=false){
+  if(!litvUser)return;
+  const msg=document.getElementById("cloudSyncStatus");
+  if(msg)msg.textContent="☁️ Synchronizujem...";
   try{
-    const favs=get("litv_favorites").map(cloudMediaPayload);
-    const watch=get("litv_watchlist").map(cloudMediaPayload);
-    const celebs=get("litv_celeb_favorites").map(cloudCelebPayload);
-    await authRequest("/user/sync",{method:"POST",body:JSON.stringify({
-      favorites:favs, watchlist:watch, celeb_favorites:celebs
-    })});
-    localStorage.setItem(LITV_SYNC_MARKER,"1");
-  }catch(e){ console.warn("LITV first cloud sync:",e); }
+    const data=collectLocalCloudData();
+    const total=data.favorites.length+data.watchlist.length+data.celeb_favorites.length;
+    const imported=await syncChunked(data);
+    localStorage.setItem("litv_cloud_sync_user_"+litvUser.id,"1");
+    if(msg)msg.textContent="✅ Cloud synchronizovaný: "+imported+" / "+total+" položiek.";
+  }catch(e){
+    if(msg)msg.textContent="❌ Synchronizácia zlyhala: "+(e.message||"neznáma chyba");
+    console.error("LITV cloud sync:",e);
+  }
 }
 
-// Wrap existing local actions: localStorage remains primary and cloud mirrors changes.
 const _litvOldToggleFav=toggleFav;
 toggleFav=function(){
   if(!current)return;
-  const item={...current};
-  const wasFavorite=hasFavorite(item);
+  const item={...current},wasFavorite=hasFavorite(item);
   _litvOldToggleFav();
-  if(litvUser){
-    const payload=cloudMediaPayload(item);
-    wasFavorite
-      ? cloudDelete("/user/favorites",payload)
-      : cloudPost("/user/favorites",payload);
-  }
+  if(litvUser){const p=cloudMediaPayload(item,item.litv_source_category);wasFavorite?cloudDelete("/user/favorites",p):cloudPost("/user/favorites",p);}
 };
-
 const _litvOldToggleWL=toggleWL;
 toggleWL=function(){
   if(!current)return;
-  const item={...current};
-  const existed=hasInKey("litv_watchlist",item);
+  const item={...current},existed=hasInKey("litv_watchlist",item);
   _litvOldToggleWL();
-  if(litvUser){
-    const payload=cloudMediaPayload(item);
-    existed
-      ? cloudDelete("/user/watchlist",payload)
-      : cloudPost("/user/watchlist",payload);
-  }
+  if(litvUser){const p=cloudMediaPayload(item);existed?cloudDelete("/user/watchlist",p):cloudPost("/user/watchlist",p);}
 };
-
 const _litvOldTogglePersonFavorite=togglePersonFavorite;
 togglePersonFavorite=function(){
   if(!currentPerson)return;
-  const person={...currentPerson};
-  const existed=hasInKey("litv_celeb_favorites",person);
+  const p={...currentPerson},existed=hasInKey("litv_celeb_favorites",p);
   _litvOldTogglePersonFavorite();
-  if(litvUser){
-    const payload=cloudCelebPayload(person);
-    existed
-      ? cloudDelete("/user/celeb-favorites",payload)
-      : cloudPost("/user/celeb-favorites",payload);
-  }
+  if(litvUser){const q=cloudCelebPayload(p);existed?cloudDelete("/user/celeb-favorites",q):cloudPost("/user/celeb-favorites",q);}
 };
 
-// Extend account restoration/login so existing local data is imported once.
-const _litvOldRefreshAccountUI=refreshAccountUI;
-refreshAccountUI=function(){
-  _litvOldRefreshAccountUI();
-  if(litvUser) syncExistingLocalData();
+// Explicitly synchronize after successful login/registration.
+const _litvSubmitAccount=submitAccount;
+submitAccount=async function(){
+  await _litvSubmitAccount();
+  if(litvUser) await syncExistingLocalData(true);
 };
-if(litvUser) syncExistingLocalData();
+
+// Also synchronize after a valid saved session is restored.
+const _litvRestoreAccount=restoreAccount;
+restoreAccount=async function(){
+  await _litvRestoreAccount();
+  if(litvUser) await syncExistingLocalData(true);
+};
 
 </script>
 
@@ -874,7 +885,9 @@ if(litvUser) syncExistingLocalData();
         <strong id="profileUsername"></strong><br>
         <span id="profileEmail"></span>
       </div>
-      <p>Účet je pripojený k LITV MOVIES D1. Tvoje súčasné lokálne Obľúbené a Watchlist zatiaľ zostávajú nedotknuté.</p>
+      <p>Účet je pripojený k LITV MOVIES D1. Lokálne dáta zostávajú zachované a cloud ich bezpečne kopíruje.</p>
+      <div id="cloudSyncStatus" style="margin:10px 0;color:#aeb7c7">☁️ Cloud pripravený.</div>
+      <button class="account-action" onclick="syncExistingLocalData(true)">☁️ Synchronizovať teraz</button>
       <button class="account-action" onclick="logoutAccount()">Odhlásiť sa</button>
     </div>
   </div>
