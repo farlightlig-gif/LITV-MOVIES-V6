@@ -1,242 +1,459 @@
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    const headers = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Content-Type": "application/json; charset=utf-8"
-    };
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>LITV MOVIES</title>
+<style>
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#080808;color:#fff;font-family:Arial,sans-serif}
+nav{position:sticky;top:0;z-index:50;background:#090909;border-bottom:1px solid #222;padding:13px 4%;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{font-size:24px;font-weight:900;white-space:nowrap}.logo b{color:#e50914}.nav{display:flex;gap:3px;flex-wrap:wrap}
+.nav button{background:none;border:0;color:#aaa;padding:9px 7px;cursor:pointer;font-size:14px}.nav button:hover{color:#fff}
+.search{margin-left:auto;display:flex;width:300px}.search input{flex:1;min-width:0;background:#151515;color:#fff;border:1px solid #333;padding:11px;border-radius:7px 0 0 7px;outline:none}.search button{border:0;background:#e50914;color:#fff;padding:0 15px;border-radius:0 7px 7px 0;font-weight:bold;cursor:pointer}
+.hero{padding:75px 6%;min-height:370px;display:flex;align-items:center;background:radial-gradient(circle at 75% 30%,#42090d,transparent 45%),linear-gradient(135deg,#151515,#080808)}
+.hero h1{font-size:clamp(42px,7vw,76px);line-height:.95;margin:10px 0}.hero p{color:#aaa;font-size:17px;line-height:1.6;max-width:620px}.red{color:#e50914;font-weight:bold;letter-spacing:3px}
+.hero button,.action,.showAll{background:#e50914;color:#fff;border:0;border-radius:7px;padding:12px 18px;font-weight:bold;cursor:pointer}.secondary{background:#222!important}
+section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.title{font-size:26px;font-weight:bold}.showAll{padding:9px 13px;font-size:13px;white-space:nowrap}
+.rail{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 18px;scroll-behavior:smooth}.rail::-webkit-scrollbar{height:7px}.rail::-webkit-scrollbar-thumb{background:#333;border-radius:8px}
+.movie{flex:0 0 165px;background:#121212;border-radius:10px;overflow:hidden;cursor:pointer;position:relative;transition:.2s;min-width:0}.movie:hover{transform:translateY(-5px)}
+.movie img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#171717}.info{padding:10px}.name{font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:7px}.meta{display:flex;justify-content:space-between;gap:6px;color:#888;font-size:12px}.rating{color:#f5c518}.badge{position:absolute;top:8px;right:8px;background:#e50914;border-radius:20px;padding:5px 8px}
+.page{display:none}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:16px}.empty,.status{color:#888;padding:18px 0}
+.catalogHero{padding:46px 5% 20px;background:linear-gradient(135deg,#1c0709,#080808)}.catalogHero h1{font-size:clamp(36px,6vw,58px);margin:0 0 8px}.catalogHero p{color:#aaa;margin:0}
+.favoriteStrip{padding-top:8px}.favoriteStrip .rail{min-height:40px}
+#detail,#personDetail{display:none;position:fixed;inset:0;z-index:100;background:#080808;overflow:auto}.close{position:fixed;right:22px;top:18px;z-index:110;width:45px;height:45px;border:0;border-radius:50%;background:#e50914;color:#fff;font-size:25px;cursor:pointer}
+.detail{min-height:100vh;padding:78px 7%;background-position:center top;background-size:cover;position:relative}.detail:after{content:"";position:absolute;inset:0;background:linear-gradient(to right,#080808 5%,rgba(8,8,8,.88) 48%,rgba(8,8,8,.35) 85%),linear-gradient(to top,#080808 3%,transparent 75%)}.detailin{position:relative;z-index:2;max-width:980px}.poster{width:180px;border-radius:10px}.detail h1{font-size:clamp(40px,6vw,70px);margin:18px 0}.detail p{color:#ccc;line-height:1.7}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
+.castSection{position:relative;z-index:2;margin-top:42px}.castTitle{font-size:26px;font-weight:bold;margin-bottom:14px}.castRail{display:flex;gap:13px;overflow-x:auto;padding:4px 2px 18px}.castCard{flex:0 0 130px;background:#121212;border-radius:12px;overflow:hidden;cursor:pointer}.castCard img{width:100%;aspect-ratio:2/3;object-fit:cover;background:#171717;display:block}.castInfo{padding:9px}.castName{font-weight:bold;font-size:14px}.castRole{color:#888;font-size:12px;margin-top:5px}
+.subnav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:25px}.subnav button{background:#171717;border:1px solid #333;color:#ddd;padding:11px 17px;border-radius:8px;cursor:pointer}.subnav button.active,.subnav button:hover{background:#e50914;color:#fff;border-color:#e50914}
+.personGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:18px}.person{background:#121212;border-radius:12px;overflow:hidden;cursor:pointer;position:relative}.person img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#171717}.personInfo{padding:12px}.personName{font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.personDept{color:#888;font-size:13px;margin-top:6px}
+.personSearch{display:flex;max-width:600px;margin:0 0 30px}.personSearch input{flex:1;min-width:0;background:#151515;color:#fff;border:1px solid #333;padding:13px;border-radius:8px 0 0 8px;outline:none;font-size:16px}.personSearch button{border:0;background:#e50914;color:#fff;padding:0 20px;border-radius:0 8px 8px 0;font-weight:bold;cursor:pointer}
+.personHero{min-height:100vh;padding:80px 7%;background-size:cover;background-position:center;position:relative}.personHero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#080808 8%,rgba(8,8,8,.88) 48%,rgba(8,8,8,.35)),linear-gradient(0deg,#080808 0%,transparent 65%)}.personContent{position:relative;z-index:2;max-width:1000px}.personPortrait{width:190px;border-radius:14px}.personHero h1{font-size:clamp(42px,7vw,75px);margin:18px 0 8px}.personMeta{color:#aaa}.personBio{color:#ccc;line-height:1.7;max-width:720px}.personMovies{margin-top:45px}.loader{text-align:center;color:#888;padding:22px}
+@media(max-width:700px){
+ nav{padding:11px 3%;gap:10px}.logo{font-size:21px}.nav{order:3;width:100%;display:flex;overflow-x:auto;flex-wrap:nowrap;justify-content:flex-start;padding-bottom:2px}.nav button{white-space:nowrap;font-size:13px}.search{width:100%;margin-left:0;order:2}.hero{padding:58px 5%;min-height:330px}
+ .movie{flex-basis:142px}
+ .grid,#results,#favorites,#watchlist,#allGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px}
+ .grid .movie,#results .movie,#favorites .movie,#watchlist .movie,#allGrid .movie{width:100%;min-width:0;flex:none}
+ .detail{padding:70px 5%}.poster{width:140px}.personGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.personHero{padding:70px 5%}.personPortrait{width:145px}.castCard{flex-basis:118px}
+ section{padding:24px 4%}.title{font-size:22px}.showAll{font-size:12px;padding:8px 10px}.catalogHero{padding:34px 4% 16px}
+}
+</style>
+</head>
+<body>
+<nav>
+<div class="logo">LI<b>TV</b> MOVIES</div>
+<div class="nav">
+<button onclick="home()">🏠 Domov</button>
+<button onclick="openCatalog('movie')">🎬 Filmy</button>
+<button onclick="openCatalog('tv')">📺 Seriály</button>
+<button onclick="openCatalog('telenovela')">🌹 Telenovely</button>
+<button onclick="searchPage()">🔎 Hľadať</button>
+<button onclick="celebPage()">⭐ Celeb</button>
+<button onclick="favoritesPage()">❤️ Obľúbené</button>
+<button onclick="watchlistPage()">🔖 Watchlist</button>
+</div>
+<div class="search"><input id="q" placeholder="Hľadať film alebo seriál..."><button onclick="search()">Hľadať</button></div>
+</nav>
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers });
-    }
+<div id="homePage" class="page">
+<div class="hero"><div><div class="red">LITV MOVIES</div><h1>Objav svoj<br>ďalší príbeh.</h1><p>Filmy, seriály, telenovely a celebrity na jednom mieste.</p><button onclick="openCatalog('movie')">🎬 OBJAVOVAŤ</button></div></div>
+<div id="homeSections"></div>
+</div>
 
-    const authHeaders = {
-      Authorization: `Bearer ${env.TMDB}`,
-      accept: "application/json"
-    };
+<div id="catalogPage" class="page">
+<div class="catalogHero"><h1 id="catalogTitle"></h1><p id="catalogSubtitle"></p></div>
+<section class="favoriteStrip">
+<div class="sectionHead"><div class="title" id="catalogFavTitle">❤️ Obľúbené</div></div>
+<div id="catalogFavorites" class="rail"></div>
+</section>
+<div id="catalogSections"></div>
+</div>
 
-    async function tmdb(path) {
-      const response = await fetch("https://api.themoviedb.org/3" + path, { headers: authHeaders });
-      const data = await response.json();
-      return new Response(JSON.stringify(data), { status: response.status, headers });
-    }
+<div id="allPage" class="page"><section><div class="sectionHead"><div class="title" id="allTitle"></div></div><div id="allGrid" class="grid"></div><div id="allLoader" class="loader"></div></section></div>
+<div id="searchPage" class="page"><section><div class="title" id="searchTitle">🔎 Výsledky</div><div id="status" class="status"></div><div id="results" class="grid"></div><div id="searchLoader" class="loader"></div></section></div>
 
-    async function tmdbJson(path) {
-      const response = await fetch("https://api.themoviedb.org/3" + path, { headers: authHeaders });
-      return await response.json();
-    }
+<div id="favoritesPage" class="page">
+<section>
+<div class="title">❤️ Obľúbené</div>
+<div class="subnav" style="margin-top:18px">
+<button class="active" id="favAllBtn" onclick="renderFavoritesMenu('all')">Všetko</button>
+<button id="favMoviesBtn" onclick="renderFavoritesMenu('movie')">🎬 Filmy</button>
+<button id="favSeriesBtn" onclick="renderFavoritesMenu('tv')">📺 Seriály</button>
+<button id="favTelenovelasBtn" onclick="renderFavoritesMenu('telenovela')">🌹 Telenovely</button>
+</div>
+<div id="favorites" class="grid"></div>
+</section>
+</div>
 
-    const page = Math.max(1, Number(url.searchParams.get("page") || 1));
+<div id="watchlistPage" class="page"><section><div class="title">🔖 Watchlist</div><div class="status">Filmy, seriály a telenovely spolu.</div><div id="watchlist" class="grid"></div></section></div>
 
-    if (url.pathname === "/search") {
-      const query = url.searchParams.get("query");
-      if (!query) {
-        return new Response(JSON.stringify({ error: "Chýba parameter query." }), { status: 400, headers });
-      }
-      return tmdb(
-        "/search/multi?query=" + encodeURIComponent(query) +
-        "&language=cs-CZ&include_adult=false&page=" + page
-      );
-    }
+<div id="celebPage" class="page">
+<section>
+<div class="title">⭐ CELEB</div>
+<div class="subnav">
+<button id="actorsBtn" class="active" onclick="showCelebType('actors')">👨 Herci</button>
+<button id="actressesBtn" onclick="showCelebType('actresses')">👩 Herečky</button>
+<button onclick="showCelebType('favorites')">❤️ Moje obľúbené</button>
+</div>
+<div class="personSearch"><input id="personQuery" placeholder="Vyhľadať herca alebo herečku..."><button onclick="searchPeople()">Hľadať</button></div>
+<div id="celebStatus" class="status"></div><div id="people" class="personGrid"></div>
+</section>
+</div>
 
-    if (url.pathname === "/trending") return tmdb("/trending/movie/week?language=cs-CZ&page=" + page);
-    if (url.pathname === "/popular") return tmdb("/movie/popular?language=cs-CZ&page=" + page);
-    if (url.pathname === "/top-rated") return tmdb("/movie/top_rated?language=cs-CZ&page=" + page);
-    if (url.pathname === "/now-playing") return tmdb("/movie/now_playing?language=cs-CZ&page=" + page);
-    if (url.pathname === "/upcoming") return tmdb("/movie/upcoming?language=cs-CZ&page=" + page);
+<div id="detail"><button class="close" onclick="closeDetail()">×</button><div id="detailBg" class="detail"><div class="detailin">
+<img id="poster" class="poster"><h1 id="dt"></h1><div id="dm" style="color:#aaa"></div><p id="desc"></p>
+<div class="actions"><button id="fav" class="action" onclick="toggleFav()">❤️ Obľúbené</button><button id="wl" class="action secondary" onclick="toggleWL()">🔖 Watchlist</button></div>
+<div class="castSection"><div class="castTitle">🎭 Obsadenie</div><div id="castStatus" class="status"></div><div id="movieCast" class="castRail"></div></div>
+</div></div></div>
 
-    if (url.pathname === "/catalog") {
-      const type = url.searchParams.get("type") || "movie";
-      const section = url.searchParams.get("section") || "random";
+<div id="personDetail"><button class="close" onclick="closePerson()">×</button><div id="personHero" class="personHero"><div class="personContent">
+<img id="personPortrait" class="personPortrait"><h1 id="personTitle"></h1><div id="personMeta" class="personMeta"></div><p id="personBio" class="personBio"></p>
+<button id="personFav" class="action" onclick="togglePersonFavorite()">❤️ Pridať medzi obľúbených</button>
+<div class="personMovies"><div class="title">🎬 Celá filmografia</div><div id="personCredits" class="rail"></div></div>
+</div></div></div>
 
-      if (type === "movie") {
-        if (section === "now") return tmdb("/movie/now_playing?language=cs-CZ&page=" + page);
-        if (section === "upcoming") return tmdb("/movie/upcoming?language=cs-CZ&page=" + page);
-        if (section === "top") return tmdb("/movie/top_rated?language=cs-CZ&page=" + page);
-        return tmdb("/movie/popular?language=cs-CZ&page=" + page);
-      }
-
-      if (type === "tv") {
-        if (section === "now") return tmdb("/tv/on_the_air?language=cs-CZ&page=" + page);
-        if (section === "top") return tmdb("/tv/top_rated?language=cs-CZ&page=" + page);
-        if (section === "upcoming") {
-          const today = new Date().toISOString().slice(0,10);
-          return tmdb(
-            "/discover/tv?include_adult=false&language=cs-CZ&page=" + page +
-            "&sort_by=first_air_date.asc&first_air_date.gte=" + today +
-            "&vote_count.gte=3"
-          );
-        }
-        return tmdb("/tv/popular?language=cs-CZ&page=" + page);
-      }
-
-      if (type === "telenovela") {
-        const base =
-          "/discover/tv?include_adult=false&language=cs-CZ&with_genres=10766&page=" + page;
-
-        if (section === "top") {
-          return tmdb(base + "&sort_by=vote_average.desc&vote_count.gte=20");
-        }
-
-        if (section === "now") {
-          const today = new Date().toISOString().slice(0,10);
-          return tmdb(base + "&sort_by=popularity.desc&air_date.lte=" + today);
-        }
-
-        if (section === "upcoming") {
-          const today = new Date().toISOString().slice(0,10);
-          return tmdb(base + "&sort_by=first_air_date.asc&first_air_date.gte=" + today);
-        }
-
-        return tmdb(base + "&sort_by=popularity.desc");
-      }
-
-      return new Response(JSON.stringify({ error: "Neplatný typ katalógu." }), { status: 400, headers });
-    }
-
-    if (url.pathname.startsWith("/movie/")) {
-      const movieId = url.pathname.split("/")[2];
-
-      if (!movieId || !/^\d+$/.test(movieId)) {
-        return new Response(JSON.stringify({ error: "Neplatné ID filmu." }), { status: 400, headers });
-      }
-
-      const [movie, credits] = await Promise.all([
-        tmdbJson("/movie/" + movieId + "?language=cs-CZ"),
-        tmdbJson("/movie/" + movieId + "/credits?language=cs-CZ")
-      ]);
-
-      return new Response(JSON.stringify({
-        media_type: "movie",
-        movie,
-        details: movie,
-        cast: Array.isArray(credits.cast) ? credits.cast : [],
-        crew: Array.isArray(credits.crew) ? credits.crew : []
-      }), { status: 200, headers });
-    }
-
-    if (url.pathname.startsWith("/tv/")) {
-      const tvId = url.pathname.split("/")[2];
-
-      if (!tvId || !/^\d+$/.test(tvId)) {
-        return new Response(JSON.stringify({ error: "Neplatné ID seriálu." }), { status: 400, headers });
-      }
-
-      const [tv, credits] = await Promise.all([
-        tmdbJson("/tv/" + tvId + "?language=cs-CZ"),
-        tmdbJson("/tv/" + tvId + "/credits?language=cs-CZ")
-      ]);
-
-      return new Response(JSON.stringify({
-        media_type: "tv",
-        tv,
-        details: tv,
-        cast: Array.isArray(credits.cast) ? credits.cast : [],
-        crew: Array.isArray(credits.crew) ? credits.crew : []
-      }), { status: 200, headers });
-    }
-
-    if (url.pathname === "/person-search") {
-      const query = url.searchParams.get("query");
-      if (!query) {
-        return new Response(JSON.stringify({ error: "Chýba parameter query." }), { status: 400, headers });
-      }
-      return tmdb(
-        "/search/person?query=" + encodeURIComponent(query) +
-        "&language=cs-CZ&include_adult=false&page=" + page
-      );
-    }
-
-    if (url.pathname === "/person-popular") {
-      const gender = url.searchParams.get("gender");
-      const wantedGender = gender === "female" ? 1 : gender === "male" ? 2 : null;
-      let allPeople = [];
-
-      for (let p = 1; p <= 5; p++) {
-        const data = await tmdbJson("/person/popular?language=cs-CZ&page=" + p);
-        if (Array.isArray(data.results)) allPeople.push(...data.results);
-      }
-
-      if (wantedGender !== null) {
-        allPeople = allPeople.filter(person => person.gender === wantedGender);
-      }
-
-      const unique = [];
-      const ids = new Set();
-
-      for (const person of allPeople) {
-        if (!ids.has(person.id)) {
-          ids.add(person.id);
-          unique.push(person);
-        }
-      }
-
-      return new Response(JSON.stringify({
-        page: 1,
-        results: unique,
-        total_pages: 1,
-        total_results: unique.length
-      }), { status: 200, headers });
-    }
-
-    if (url.pathname.startsWith("/person/")) {
-      const personId = url.pathname.split("/")[2];
-
-      if (!personId || !/^\d+$/.test(personId)) {
-        return new Response(JSON.stringify({ error: "Neplatné ID celebrity." }), { status: 400, headers });
-      }
-
-      const [person, credits] = await Promise.all([
-        tmdbJson("/person/" + personId + "?language=cs-CZ"),
-        tmdbJson("/person/" + personId + "/combined_credits?language=cs-CZ")
-      ]);
-
-      const cast = Array.isArray(credits.cast) ? credits.cast : [];
-      const uniqueCredits = [];
-      const keys = new Set();
-
-      for (const item of cast) {
-        if (!item || !item.id) continue;
-        const key = (item.media_type || "movie") + ":" + item.id;
-        if (!keys.has(key)) {
-          keys.add(key);
-          uniqueCredits.push(item);
-        }
-      }
-
-      const cleanedCredits = uniqueCredits
-        .filter(item => item.poster_path)
-        .sort((a, b) => {
-          const dateA = a.release_date || a.first_air_date || "";
-          const dateB = b.release_date || b.first_air_date || "";
-          return dateB.localeCompare(dateA);
-        });
-
-      return new Response(JSON.stringify({
-        person,
-        credits: cleanedCredits,
-        filmography: cleanedCredits,
-        total_credits: cleanedCredits.length
-      }), { status: 200, headers });
-    }
-
-    return new Response(JSON.stringify({
-      name: "LITV MOVIES API",
-      status: "online",
-      endpoints: [
-        "/search?query=Avatar&page=1",
-        "/catalog?type=movie&section=random&page=1",
-        "/catalog?type=tv&section=random&page=1",
-        "/catalog?type=telenovela&section=random&page=1",
-        "/movie/ID",
-        "/tv/ID",
-        "/person-search?query=Jenna%20Ortega",
-        "/person-popular?gender=male",
-        "/person-popular?gender=female",
-        "/person/ID"
-      ]
-    }), { status: 200, headers });
-  }
+<script>
+const API="https://litv-movie-api.cartermilan83.workers.dev";
+const SECTIONS=[
+ {key:"random",title:"🎲 Náhodné"},
+ {key:"now",title:"🔥 Práve vychádzajúce"},
+ {key:"upcoming",title:"📅 Čoskoro vychádzajúce"},
+ {key:"top",title:"⭐ Najlepšie hodnotené"}
+];
+const LABELS={
+ movie:{title:"🎬 Filmy",subtitle:"Náhodné filmy, novinky, pripravované a najlepšie hodnotené.",fav:"❤️ Obľúbené filmy"},
+ tv:{title:"📺 Seriály",subtitle:"Objav seriály, ktoré práve bežia, pripravujú sa alebo patria medzi najlepšie.",fav:"❤️ Obľúbené seriály"},
+ telenovela:{title:"🌹 Telenovely",subtitle:"Telenovely a soap seriály z celého sveta.",fav:"❤️ Obľúbené telenovely"}
 };
+const FAV_KEYS={
+ movie:"litv_favorites_movies",
+ tv:"litv_favorites_series",
+ telenovela:"litv_favorites_telenovelas"
+};
+let current=null,currentPerson=null,celebType="actors",currentCatalog="movie";
+let railStates={},allState=null,searchState=null;
+
+const get=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]")}catch(e){return[]}};
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const mediaTitle=m=>m.title||m.name||"Bez názvu";
+const mediaDate=m=>m.release_date||m.first_air_date||"";
+const mediaYear=m=>mediaDate(m)?String(mediaDate(m)).slice(0,4):"—";
+const mediaType=m=>m.litv_type||m.media_type||(m.name&&!m.title?"tv":"movie");
+const mediaKey=m=>mediaType(m)+":"+m.id;
+
+function normalizeType(type){
+ if(type==="telenovela") return "telenovela";
+ if(type==="tv") return "tv";
+ return "movie";
+}
+function normalized(m,typeHint){
+ const forced=typeHint==="telenovela"?"telenovela":null;
+ const type=forced||m.litv_type||m.media_type||(m.name&&!m.title?"tv":"movie");
+ return {...m,litv_type:type,media_type:(type==="movie"?"movie":"tv")};
+}
+function favoriteKeyFor(m){
+ return FAV_KEYS[normalizeType(mediaType(m))];
+}
+function hasInKey(k,m){
+ return get(k).some(x=>mediaKey(x)===mediaKey(m));
+}
+function hasFavorite(m){
+ return hasInKey(favoriteKeyFor(m),m);
+}
+function migrateOldFavorites(){
+ if(localStorage.getItem("litv_fav_migrated_v8")) return;
+ const old=get("litv_favorites");
+ if(old.length){
+   const movies=get(FAV_KEYS.movie);
+   const seen=new Set(movies.map(mediaKey));
+   old.forEach(x=>{
+     const m=normalized(x,"movie");
+     if(!seen.has(mediaKey(m))){seen.add(mediaKey(m));movies.push(m);}
+   });
+   save(FAV_KEYS.movie,movies);
+ }
+ localStorage.setItem("litv_fav_migrated_v8","1");
+}
+migrateOldFavorites();
+
+async function api(path){const r=await fetch(API+path);if(!r.ok)throw Error("API");return r.json()}
+function hide(){document.querySelectorAll(".page").forEach(x=>x.style.display="none")}
+function home(){hide();document.getElementById("homePage").style.display="block";buildSections("homeSections","movie","home")}
+function searchPage(){hide();document.getElementById("searchPage").style.display="block";document.getElementById("q").focus()}
+function favoritesPage(){hide();document.getElementById("favoritesPage").style.display="block";renderFavoritesMenu("all")}
+function watchlistPage(){hide();document.getElementById("watchlistPage").style.display="block";renderSaved("watchlist","litv_watchlist")}
+function celebPage(){hide();document.getElementById("celebPage").style.display="block";showCelebType(celebType)}
+
+function card(raw,typeHint){
+ const m=normalized(raw,typeHint),d=document.createElement("div");d.className="movie";
+ const img=m.poster_path?"https://image.tmdb.org/t/p/w500"+m.poster_path:"";
+ const typ=mediaType(m)==="movie"?"🎬":mediaType(m)==="telenovela"?"🌹":"📺";
+ d.innerHTML=(hasFavorite(m)?'<div class="badge">❤️</div>':"")+
+ '<img src="'+img+'" loading="lazy" alt="'+esc(mediaTitle(m))+'"><div class="info"><div class="name">'+esc(mediaTitle(m))+
+ '</div><div class="meta"><span>'+mediaYear(m)+'</span><span>'+typ+' <span class="rating">★ '+(m.vote_average?Number(m.vote_average).toFixed(1):"—")+'</span></span></div></div>';
+ d.onclick=()=>openDetail(m);
+ return d;
+}
+function appendCards(el,list,typeHint,shuffle=false){
+ let items=(list||[]).filter(x=>x&&(x.media_type!=="person")&&x.poster_path);
+ if(shuffle) items=[...items].sort(()=>Math.random()-.5);
+ items.forEach(m=>el.appendChild(card(m,typeHint)));
+}
+function renderSaved(id,key){
+ const box=document.getElementById(id),items=get(key);box.innerHTML="";
+ appendCards(box,items);
+ if(!items.length) box.innerHTML='<div class="empty">Zatiaľ tu nič nemáš.</div>';
+}
+
+function allFavorites(){
+ return [...get(FAV_KEYS.movie),...get(FAV_KEYS.tv),...get(FAV_KEYS.telenovela)];
+}
+function renderFavoritesMenu(type){
+ const buttons={
+   all:"favAllBtn",movie:"favMoviesBtn",tv:"favSeriesBtn",telenovela:"favTelenovelasBtn"
+ };
+ Object.values(buttons).forEach(id=>document.getElementById(id).classList.remove("active"));
+ document.getElementById(buttons[type]).classList.add("active");
+ const box=document.getElementById("favorites");box.innerHTML="";
+ const items=type==="all"?allFavorites():get(FAV_KEYS[type]);
+ appendCards(box,items,type==="all"?null:type);
+ if(!items.length) box.innerHTML='<div class="empty">Zatiaľ tu nič nemáš.</div>';
+}
+function renderCatalogFavorites(type){
+ document.getElementById("catalogFavTitle").textContent=LABELS[type].fav;
+ const box=document.getElementById("catalogFavorites");box.innerHTML="";
+ const items=get(FAV_KEYS[type]);
+ appendCards(box,items,type);
+ if(!items.length) box.innerHTML='<div class="empty">Zatiaľ tu nič nemáš.</div>';
+}
+
+function sectionHTML(prefix,type,s){
+ const id=prefix+"_"+s.key;
+ return '<section><div class="sectionHead"><div class="title">'+s.title+'</div><button class="showAll" onclick="openAll(\''+type+'\',\''+s.key+'\',\''+s.title.replace(/^[^ ]+ /,"")+'\')">Zobraziť všetky ›</button></div><div id="'+id+'" class="rail"></div></section>';
+}
+function buildSections(containerId,type,prefix){
+ const holder=document.getElementById(containerId);
+ const buildKey=prefix+":"+type;
+ if(holder.dataset.built===buildKey)return;
+ holder.dataset.built=buildKey;
+ holder.innerHTML=SECTIONS.map(s=>sectionHTML(prefix,type,s)).join("");
+ SECTIONS.forEach(s=>initRail(prefix+"_"+s.key,type,s.key));
+}
+function openCatalog(type){
+ currentCatalog=type;hide();document.getElementById("catalogPage").style.display="block";
+ document.getElementById("catalogTitle").textContent=LABELS[type].title;
+ document.getElementById("catalogSubtitle").textContent=LABELS[type].subtitle;
+ renderCatalogFavorites(type);
+ buildSections("catalogSections",type,"catalog");
+ window.scrollTo(0,0);
+}
+function initRail(id,type,section){
+ railStates[id]={type,section,page:0,total:999,loading:false};
+ const el=document.getElementById(id);
+ el.addEventListener("scroll",()=>{if(el.scrollLeft+el.clientWidth>=el.scrollWidth-450)loadRail(id)});
+ loadRail(id);
+}
+async function loadRail(id){
+ const st=railStates[id],el=document.getElementById(id);
+ if(!st||st.loading||st.page>=st.total)return;
+ st.loading=true;
+ const next=st.page+1;
+ try{
+  const d=await api("/catalog?type="+st.type+"&section="+st.section+"&page="+next);
+  st.page=d.page||next;st.total=Math.min(d.total_pages||500,500);
+  appendCards(el,d.results||[],st.type,st.section==="random");
+ }catch(e){
+  if(!el.children.length)el.innerHTML='<div class="empty">Nepodarilo sa načítať obsah.</div>';
+ }
+ st.loading=false;
+}
+
+function openAll(type,section,label){
+ hide();document.getElementById("allPage").style.display="block";
+ document.getElementById("allTitle").textContent=(LABELS[type]?.title||"")+" — "+label;
+ document.getElementById("allGrid").innerHTML="";
+ document.getElementById("allLoader").textContent="";
+ allState={type,section,page:0,total:999,loading:false};
+ loadAll();window.scrollTo(0,0);
+}
+async function loadAll(){
+ const st=allState;if(!st||st.loading||st.page>=st.total)return;
+ st.loading=true;document.getElementById("allLoader").textContent="Načítavam ďalšie...";
+ const next=st.page+1;
+ try{
+  const d=await api("/catalog?type="+st.type+"&section="+st.section+"&page="+next);
+  st.page=d.page||next;st.total=Math.min(d.total_pages||500,500);
+  appendCards(document.getElementById("allGrid"),d.results||[],st.type,st.section==="random");
+  document.getElementById("allLoader").textContent=st.page>=st.total?"To je všetko.":"";
+ }catch(e){
+  document.getElementById("allLoader").textContent="Ďalší obsah sa nepodarilo načítať.";
+ }
+ st.loading=false;
+}
+window.addEventListener("scroll",()=>{
+ if(document.getElementById("allPage").style.display==="block" && innerHeight+scrollY>=document.body.offsetHeight-800) loadAll();
+ if(document.getElementById("searchPage").style.display==="block" && innerHeight+scrollY>=document.body.offsetHeight-800) loadMoreSearch();
+});
+
+async function search(reset=true){
+ const q=document.getElementById("q").value.trim();if(!q)return;
+ searchPage();
+ if(reset){
+   searchState={q,page:0,total:999,loading:false};
+   document.getElementById("results").innerHTML="";
+   document.getElementById("searchTitle").textContent='🔎 Výsledky pre "'+q+'"';
+ }
+ loadMoreSearch();
+}
+async function loadMoreSearch(){
+ const st=searchState;if(!st||st.loading||st.page>=st.total)return;
+ st.loading=true;document.getElementById("searchLoader").textContent="Načítavam...";
+ try{
+  const next=st.page+1,d=await api("/search?query="+encodeURIComponent(st.q)+"&page="+next);
+  st.page=d.page||next;st.total=Math.min(d.total_pages||1,500);
+  const list=(d.results||[]).filter(x=>x.media_type==="movie"||x.media_type==="tv");
+  appendCards(document.getElementById("results"),list);
+  document.getElementById("status").textContent="Načítaná strana "+st.page+" z "+st.total;
+  document.getElementById("searchLoader").textContent=st.page>=st.total?"To je všetko.":"";
+ }catch(e){
+  document.getElementById("searchLoader").textContent="Nepodarilo sa načítať výsledky.";
+ }
+ st.loading=false;
+}
+document.getElementById("q").addEventListener("keydown",e=>{if(e.key==="Enter")search(true)});
+
+async function openDetail(m){
+ current=normalized(m,mediaType(m));
+ const type=mediaType(current);
+ const apiType=type==="movie"?"movie":"tv";
+ document.getElementById("detail").style.display="block";document.body.style.overflow="hidden";
+ document.getElementById("dt").textContent=mediaTitle(current);
+ document.getElementById("poster").src=current.poster_path?"https://image.tmdb.org/t/p/w500"+current.poster_path:"";
+ document.getElementById("detailBg").style.backgroundImage=current.backdrop_path?"url(https://image.tmdb.org/t/p/original"+current.backdrop_path+")":"none";
+ const kind=type==="movie"?"🎬 Film":type==="telenovela"?"🌹 Telenovela":"📺 Seriál";
+ document.getElementById("dm").textContent=mediaYear(current)+" • "+kind+" • ★ "+(current.vote_average?Number(current.vote_average).toFixed(1):"—");
+ document.getElementById("desc").textContent=current.overview||"Načítavam detail...";
+ updateButtons();document.getElementById("movieCast").innerHTML="";document.getElementById("castStatus").textContent="Načítavam obsadenie...";
+ try{
+  const d=await api("/"+apiType+"/"+current.id),detail=d.details||d.movie||d.tv||current;
+  current=normalized({...current,...detail},type);
+  document.getElementById("dt").textContent=mediaTitle(current);
+  document.getElementById("desc").textContent=current.overview||"Popis nie je dostupný.";
+  renderCast(d.cast||[]);
+  updateButtons();
+ }catch(e){
+  document.getElementById("castStatus").textContent="Obsadenie sa nepodarilo načítať.";
+ }
+}
+function renderCast(cast){
+ const box=document.getElementById("movieCast");box.innerHTML="";
+ if(!cast.length){document.getElementById("castStatus").textContent="Obsadenie nie je dostupné.";return}
+ document.getElementById("castStatus").textContent="Obsadenie • "+cast.length;
+ cast.forEach(p=>{
+   const c=document.createElement("div");c.className="castCard";
+   const img=p.profile_path?"https://image.tmdb.org/t/p/w500"+p.profile_path:"";
+   c.innerHTML='<img src="'+img+'" loading="lazy"><div class="castInfo"><div class="castName">'+esc(p.name)+'</div><div class="castRole">'+esc(p.character||"")+'</div></div>';
+   c.onclick=()=>{closeDetail();openPerson(p)};
+   box.appendChild(c);
+ });
+}
+function updateButtons(){
+ if(!current)return;
+ document.getElementById("fav").textContent=hasFavorite(current)?"❤️ Odstrániť z obľúbených":"❤️ Pridať do obľúbených";
+ document.getElementById("wl").textContent=hasInKey("litv_watchlist",current)?"🔖 Odstrániť z watchlistu":"🔖 Pridať do watchlistu";
+}
+function toggleFav(){
+ if(!current)return;
+ const key=favoriteKeyFor(current);
+ let a=get(key),i=a.findIndex(x=>mediaKey(x)===mediaKey(current));
+ i>=0?a.splice(i,1):a.unshift(current);
+ save(key,a);updateButtons();
+}
+function toggleWL(){
+ if(!current)return;
+ let a=get("litv_watchlist"),i=a.findIndex(x=>mediaKey(x)===mediaKey(current));
+ i>=0?a.splice(i,1):a.unshift(current);
+ save("litv_watchlist",a);updateButtons();
+}
+function closeDetail(){document.getElementById("detail").style.display="none";document.body.style.overflow="";current=null}
+
+function setCelebButtons(){
+ document.getElementById("actorsBtn").classList.toggle("active",celebType==="actors");
+ document.getElementById("actressesBtn").classList.toggle("active",celebType==="actresses");
+}
+async function showCelebType(type){
+ celebType=type;setCelebButtons();
+ const box=document.getElementById("people");box.innerHTML="";
+ document.getElementById("celebStatus").textContent="Načítavam...";
+ if(type==="favorites"){
+   const a=get("litv_celeb_favorites");renderPeople(a);
+   document.getElementById("celebStatus").textContent=a.length?"Moje obľúbené celebrity":"Zatiaľ nemáš obľúbené celebrity.";
+   return;
+ }
+ try{
+   const d=await api("/person-popular?gender="+(type==="actors"?"male":"female"));
+   const list=(d.results||[]).filter(p=>p.profile_path);
+   renderPeople(list);
+   document.getElementById("celebStatus").textContent=(type==="actors"?"Herci":"Herečky")+" • "+list.length;
+ }catch(e){
+   document.getElementById("celebStatus").textContent="Celebrity sa nepodarilo načítať.";
+ }
+}
+async function searchPeople(){
+ const q=document.getElementById("personQuery").value.trim();if(!q)return;
+ document.getElementById("people").innerHTML="";
+ document.getElementById("celebStatus").textContent="Vyhľadávam...";
+ try{
+   const d=await api("/person-search?query="+encodeURIComponent(q));
+   const list=(d.results||[]).filter(p=>p.profile_path);
+   renderPeople(list);
+   document.getElementById("celebStatus").textContent="Nájdené: "+list.length;
+ }catch(e){
+   document.getElementById("celebStatus").textContent="Vyhľadávanie zlyhalo.";
+ }
+}
+document.getElementById("personQuery").addEventListener("keydown",e=>{if(e.key==="Enter")searchPeople()});
+function renderPeople(list){
+ const box=document.getElementById("people");box.innerHTML="";
+ (list||[]).forEach(p=>{
+   const d=document.createElement("div");d.className="person";
+   const img=p.profile_path?"https://image.tmdb.org/t/p/w500"+p.profile_path:"";
+   d.innerHTML=(hasInKey("litv_celeb_favorites",p)?'<div class="badge">❤️</div>':"")+'<img src="'+img+'" loading="lazy"><div class="personInfo"><div class="personName">'+esc(p.name)+'</div><div class="personDept">'+esc(p.known_for_department||"Herec / herečka")+'</div></div>';
+   d.onclick=()=>openPerson(p);box.appendChild(d);
+ });
+}
+async function openPerson(p){
+ currentPerson=p;
+ document.getElementById("personDetail").style.display="block";document.body.style.overflow="hidden";
+ document.getElementById("personTitle").textContent=p.name||"";
+ document.getElementById("personPortrait").src=p.profile_path?"https://image.tmdb.org/t/p/w500"+p.profile_path:"";
+ document.getElementById("personBio").textContent="Načítavam...";
+ document.getElementById("personCredits").innerHTML="";
+ updatePersonFavorite();
+ try{
+  const d=await api("/person/"+p.id),person=d.person||p;currentPerson={...p,...person};
+  document.getElementById("personTitle").textContent=person.name||p.name;
+  document.getElementById("personPortrait").src=person.profile_path?"https://image.tmdb.org/t/p/w500"+person.profile_path:"";
+  document.getElementById("personMeta").textContent=(person.birthday?person.birthday+" • ":"")+(person.place_of_birth||person.known_for_department||"");
+  document.getElementById("personBio").textContent=person.biography||"Životopis nie je dostupný.";
+  const box=document.getElementById("personCredits");
+  (d.credits||[]).filter(x=>x.poster_path).forEach(x=>box.appendChild(card(x,x.media_type)));
+  updatePersonFavorite();
+ }catch(e){
+  document.getElementById("personBio").textContent="Profil sa nepodarilo načítať.";
+ }
+}
+function updatePersonFavorite(){
+ if(currentPerson)document.getElementById("personFav").textContent=hasInKey("litv_celeb_favorites",currentPerson)?"❤️ Odstrániť z obľúbených":"❤️ Pridať medzi obľúbených";
+}
+function togglePersonFavorite(){
+ if(!currentPerson)return;
+ let a=get("litv_celeb_favorites"),i=a.findIndex(x=>String(x.id)===String(currentPerson.id));
+ i>=0?a.splice(i,1):a.unshift(currentPerson);
+ save("litv_celeb_favorites",a);updatePersonFavorite();
+}
+function closePerson(){document.getElementById("personDetail").style.display="none";document.body.style.overflow="";currentPerson=null}
+
+home();
+</script>
+</body>
+</html>
