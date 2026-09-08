@@ -23,6 +23,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 #detail,#personDetail{display:none;position:fixed;inset:0;background:#080808;overflow:auto}#detail{z-index:130}#personDetail{z-index:100}.close{position:fixed;right:22px;top:18px;z-index:150;width:45px;height:45px;border:0;border-radius:50%;background:#e50914;color:#fff;font-size:25px;cursor:pointer}
 .detail{min-height:100vh;padding:78px 7%;background-position:center top;background-size:cover;position:relative}.detail:after{content:"";position:absolute;inset:0;background:linear-gradient(to right,#080808 5%,rgba(8,8,8,.88) 48%,rgba(8,8,8,.35) 85%),linear-gradient(to top,#080808 3%,transparent 75%)}.detailin{position:relative;z-index:2;max-width:980px}.poster{width:180px;border-radius:10px}.detail h1{font-size:clamp(40px,6vw,70px);margin:18px 0}.detail p{color:#ccc;line-height:1.7}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
 .castSection{position:relative;z-index:2;margin-top:42px}.castTitle{font-size:26px;font-weight:bold;margin-bottom:14px}.castRail{display:flex;gap:13px;overflow-x:auto;padding:4px 2px 18px}.castCard{flex:0 0 130px;background:#121212;border-radius:12px;overflow:hidden;cursor:pointer}.castCard img{width:100%;aspect-ratio:2/3;object-fit:cover;background:#171717;display:block}.castInfo{padding:9px}.castName{font-weight:bold;font-size:14px}.castRole{color:#888;font-size:12px;margin-top:5px}
+.studioRail{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 12px;align-items:center}.studioCard{flex:0 0 auto;min-width:150px;height:78px;padding:12px 16px;border:1px solid #2b2b2b;border-radius:14px;background:rgba(18,18,18,.92);display:flex;align-items:center;justify-content:center;gap:10px}.studioCard img{max-width:130px;max-height:48px;object-fit:contain;filter:drop-shadow(0 2px 5px rgba(0,0,0,.4))}.studioName{max-width:150px;text-align:center;font-size:13px;font-weight:700;color:#e9e9e9;line-height:1.25}.externalLogos{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:2px 0 8px}.externalLogo{height:44px;min-width:116px;padding:0 15px;border-radius:11px;border:1px solid #303030;display:inline-flex;align-items:center;justify-content:center;gap:7px;text-decoration:none;font-weight:900;letter-spacing:-.25px;box-shadow:0 8px 22px rgba(0,0,0,.22);transition:transform .16s ease,border-color .16s ease,filter .16s ease}.externalLogo:hover{transform:translateY(-2px);border-color:#606060;filter:brightness(1.08)}.externalLogo.imdb{background:#f5c518;color:#000;font-family:Arial Black,Arial,sans-serif;font-size:20px;min-width:92px}.externalLogo.rt{background:#fff;color:#181818;font-size:14px}.externalLogo.rt .tomato{font-size:22px;line-height:1}.externalLogo.edna{background:#a90000;color:#fff;font-size:19px;letter-spacing:1.5px}.externalLogo.serialzone{background:#161616;color:#fff;font-size:15px}.externalLogo.serialzone b{color:#e50914}.externalLogo[hidden]{display:none!important}@media(max-width:600px){.studioCard{min-width:128px;height:70px;padding:10px 12px}.studioCard img{max-width:108px;max-height:42px}.externalLogos{gap:9px}.externalLogo{height:42px;min-width:102px;padding:0 12px}.externalLogo.imdb{min-width:86px}}
 .subnav{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:25px}.subnav button{background:#171717;border:1px solid #333;color:#ddd;padding:11px 17px;border-radius:8px;cursor:pointer}.subnav button.active,.subnav button:hover{background:#e50914;color:#fff;border-color:#e50914}
 .personGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:18px}.person{background:#121212;border-radius:12px;overflow:hidden;cursor:pointer;position:relative}.person img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover;background:#171717}.personInfo{padding:12px}.personName{font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.personDept{color:#888;font-size:13px;margin-top:6px}
 .personSearch{display:flex;max-width:600px;margin:0 0 30px}.personSearch input{flex:1;min-width:0;background:#151515;color:#fff;border:1px solid #333;padding:13px;border-radius:8px 0 0 8px;outline:none;font-size:16px}.personSearch button{border:0;background:#e50914;color:#fff;padding:0 20px;border-radius:0 8px 8px 0;font-weight:bold;cursor:pointer}
@@ -135,10 +136,19 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 <img id="poster" class="poster"><h1 id="dt"></h1><div id="dm" style="color:#aaa"></div><p id="desc"></p>
 <div class="actions"><button id="fav" class="action" onclick="toggleFav()">❤️ Obľúbené</button><button id="wl" class="action secondary" onclick="toggleWL()">🔖 Watchlist</button></div>
 <div class="castSection"><div class="castTitle">🎭 Obsadenie</div><div id="castStatus" class="status"></div><div id="movieCast" class="castRail"></div></div>
-<div id="imdbBox" class="castSection" style="display:none">
-  <div class="castTitle">IMDb</div>
-  <div id="imdbId" class="status" style="padding-top:0"></div>
-  <button id="imdbOpen" class="action" onclick="openIMDb()">Otvoriť na IMDb</button>
+<div id="studioBox" class="castSection" style="display:none">
+  <div class="castTitle">🏢 Štúdiá</div>
+  <div id="studioStatus" class="status" style="padding-top:0"></div>
+  <div id="studioRail" class="studioRail"></div>
+</div>
+<div id="externalBox" class="castSection" style="display:none">
+  <div class="castTitle">🔗 Databázy a hodnotenia</div>
+  <div id="externalLogos" class="externalLogos">
+    <a id="imdbLogo" class="externalLogo imdb" href="#" target="_blank" rel="noopener noreferrer" aria-label="IMDb">IMDb</a>
+    <a id="rtLogo" class="externalLogo rt" href="#" target="_blank" rel="noopener noreferrer" aria-label="Rotten Tomatoes"><span class="tomato">🍅</span><span>Rotten<br>Tomatoes</span></a>
+    <a id="ednaLogo" class="externalLogo edna" href="#" target="_blank" rel="noopener noreferrer" aria-label="Edna">EDNA</a>
+    <a id="serialZoneLogo" class="externalLogo serialzone" href="#" target="_blank" rel="noopener noreferrer" aria-label="SerialZone">Serial<b>Zone</b></a>
+  </div>
 </div>
 </div></div></div>
 
@@ -149,6 +159,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 </div></div></div>
 
 <script>
+// LITV MOVIES V9.7 – studios + external database logos
 const API="https://litv-movie-api.cartermilan83.workers.dev";
 const SECTIONS=[
  {key:"random",title:"🎲 Náhodné"},
@@ -475,9 +486,10 @@ async function openDetail(m){
  updateButtons();
  document.getElementById("movieCast").innerHTML="";
  document.getElementById("castStatus").textContent="Načítavam obsadenie...";
- document.getElementById("imdbBox").style.display="none";
- document.getElementById("imdbId").textContent="";
- document.getElementById("imdbOpen").dataset.imdbId="";
+ document.getElementById("studioBox").style.display="none";
+ document.getElementById("studioRail").innerHTML="";
+ document.getElementById("studioStatus").textContent="";
+ document.getElementById("externalBox").style.display="none";
  try{
   const d=await api("/"+apiType+"/"+current.id),detail=d.details||d.movie||d.tv||current;
   current=normalized({...current,...detail},type);
@@ -487,7 +499,9 @@ async function openDetail(m){
   document.getElementById("dt").textContent=mediaTitle(current);
   document.getElementById("desc").textContent=current.overview||"Popis nie je dostupný.";
   renderCast(d.cast||[]);
-  renderIMDb(d.imdb_id || d.external_ids?.imdb_id || current.imdb_id || null);
+  const imdbId=d.imdb_id || d.external_ids?.imdb_id || current.imdb_id || null;
+  renderStudios(detail.production_companies||[], detail.networks||[]);
+  renderExternalLinks(imdbId,type,current);
   updateButtons();
  }catch(e){
   document.getElementById("castStatus").textContent="Detail sa nepodarilo úplne načítať, ale základné údaje zostávajú zobrazené.";
@@ -505,23 +519,55 @@ function renderCast(cast){
    box.appendChild(c);
  });
 }
-function renderIMDb(imdbId){
- const box=document.getElementById("imdbBox");
- const idEl=document.getElementById("imdbId");
- const btn=document.getElementById("imdbOpen");
- if(!imdbId){
-   box.style.display="none";
-   btn.dataset.imdbId="";
-   return;
- }
- idEl.textContent="IMDb ID: "+imdbId;
- btn.dataset.imdbId=imdbId;
+function renderStudios(companies,networks){
+ const box=document.getElementById("studioBox");
+ const rail=document.getElementById("studioRail");
+ const status=document.getElementById("studioStatus");
+ rail.innerHTML="";
+ const all=[...(Array.isArray(companies)?companies:[]),...(Array.isArray(networks)?networks:[])];
+ const seen=new Set();
+ const studios=all.filter(x=>{
+   const key=String(x?.id||"")+"|"+String(x?.name||"");
+   if(!x?.name||seen.has(key))return false;
+   seen.add(key);return true;
+ });
+ if(!studios.length){box.style.display="none";return}
+ studios.forEach(st=>{
+   const card=document.createElement("div");card.className="studioCard";
+   if(st.logo_path){
+     const img=document.createElement("img");
+     img.src="https://image.tmdb.org/t/p/w300"+st.logo_path;
+     img.alt=st.name||"Štúdio";img.loading="lazy";
+     img.onerror=()=>{img.remove();const n=document.createElement("div");n.className="studioName";n.textContent=st.name;card.appendChild(n)};
+     card.appendChild(img);
+   }else{
+     const n=document.createElement("div");n.className="studioName";n.textContent=st.name;card.appendChild(n);
+   }
+   rail.appendChild(card);
+ });
+ status.textContent="Štúdiá a televízne spoločnosti • "+studios.length;
  box.style.display="block";
 }
-function openIMDb(){
- const imdbId=document.getElementById("imdbOpen").dataset.imdbId;
- if(!imdbId)return;
- window.open("https://www.imdb.com/title/"+encodeURIComponent(imdbId)+"/","_blank","noopener,noreferrer");
+function renderExternalLinks(imdbId,type,item){
+ const box=document.getElementById("externalBox");
+ const imdb=document.getElementById("imdbLogo");
+ const rt=document.getElementById("rtLogo");
+ const edna=document.getElementById("ednaLogo");
+ const sz=document.getElementById("serialZoneLogo");
+ const title=(item?.original_title||item?.original_name||mediaTitle(item)||"").trim();
+ const year=mediaYear(item)||"";
+ const searchText=(title+(year?" "+year:"")).trim();
+ if(imdbId){imdb.href="https://www.imdb.com/title/"+encodeURIComponent(imdbId)+"/";imdb.hidden=false}else{imdb.hidden=true;imdb.removeAttribute("href")}
+ rt.href="https://www.rottentomatoes.com/search?search="+encodeURIComponent(searchText);
+ rt.hidden=!title;
+ const isSeries=type!=="movie";
+ edna.hidden=!isSeries||!title;
+ sz.hidden=!isSeries||!title;
+ if(isSeries&&title){
+   edna.href="https://www.edna.cz/vyhledavani/?q="+encodeURIComponent(title);
+   sz.href="https://www.serialzone.cz/hledani/?q="+encodeURIComponent(imdbId?("imdb "+imdbId):title);
+ }
+ box.style.display=(!imdb.hidden||!rt.hidden||!edna.hidden||!sz.hidden)?"block":"none";
 }
 
 function updateButtons(){
