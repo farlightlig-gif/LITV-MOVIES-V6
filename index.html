@@ -66,6 +66,25 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 .calendarStatus{color:#8e97a6;font-size:13px;margin:-6px 0 18px}.calendarLegend{display:flex;gap:14px;flex-wrap:wrap;color:#777;font-size:12px;margin-top:15px}.calendarDot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}.calendarDot.movie{background:#e50914}.calendarDot.tv{background:#5ca8ff}
 @media(max-width:700px){.calendarHero{padding:32px 4% 16px}.calendarGrid,.calendarDow{display:none!important}.calendarList{display:flex!important}.calendarToolbar{align-items:flex-start}.calendarMonthNav{width:100%;justify-content:space-between}.calendarViewBtns{display:none}.calendarListItem{grid-template-columns:62px 48px 1fr;gap:9px}.calendarListItem img{width:48px;height:70px}.calendarListDate b{font-size:21px}.calendarFilters{overflow-x:auto;flex-wrap:nowrap;padding-bottom:3px}.calendarFilters button{white-space:nowrap}}
 
+
+/* ===== V9.9.5 HOME CINEMA FEATURE ===== */
+.litvHeroWrap{display:grid;grid-template-columns:minmax(0,.85fr) minmax(420px,1.35fr);gap:24px;align-items:stretch;margin-bottom:26px}
+.litvHeroWrap .hero{margin:0}
+#cinemaFeature{position:relative;min-height:280px;border-radius:22px;overflow:hidden;border:1px solid #30343c;background:#111;box-shadow:0 16px 38px rgba(0,0,0,.34);cursor:pointer}
+#cinemaFeatureBackdrop{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#cinemaFeatureShade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,8,11,.92) 0%,rgba(7,8,11,.56) 48%,rgba(7,8,11,.12) 100%),linear-gradient(0deg,rgba(7,8,11,.72),transparent 55%)}
+#cinemaFeatureContent{position:absolute;z-index:2;left:24px;right:24px;bottom:22px;max-width:72%}
+#cinemaFeatureEyebrow{font-size:12px;font-weight:900;letter-spacing:1.5px;color:#ff4b55;text-transform:uppercase;margin-bottom:7px}
+#cinemaFeatureTitle{font-size:clamp(24px,3vw,40px);line-height:1.02;font-weight:950;margin:0 0 8px;text-shadow:0 2px 12px #000}
+#cinemaFeatureMeta{color:#e1e5ec;font-size:14px;font-weight:700;margin-bottom:14px}
+#cinemaFeatureBtn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:11px;padding:10px 15px;background:#fff;color:#111;font-weight:900;cursor:pointer}
+#cinemaFeatureLoading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#aeb6c3;font-weight:800}
+@media(max-width:850px){
+ .litvHeroWrap{display:block}
+ #cinemaFeature{min-height:230px;margin-top:18px}
+ #cinemaFeatureContent{max-width:86%;left:18px;right:18px;bottom:18px}
+}
+
 </style>
 </head>
 <body>
@@ -86,7 +105,21 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 </nav>
 
 <div id="homePage" class="page">
-<div class="hero"><div><div class="red">LITV MOVIES</div><h1>Objav svoj<br>ďalší príbeh.</h1><p>Filmy, seriály, telenovely a celebrity na jednom mieste.</p><button onclick="openCatalog('movie')">🎬 OBJAVOVAŤ</button></div></div>
+<div class="litvHeroWrap">
+<div class="hero"><div><div class="red">LITV MOVIES</div>
+
+<div id="cinemaFeature" role="button" tabindex="0" aria-label="Film v kinách tento mesiac">
+  <div id="cinemaFeatureLoading">Načítavam film mesiaca…</div>
+  <img id="cinemaFeatureBackdrop" alt="" style="display:none">
+  <div id="cinemaFeatureShade"></div>
+  <div id="cinemaFeatureContent" style="display:none">
+    <div id="cinemaFeatureEyebrow">🎬 V KINÁCH TENTO MESIAC</div>
+    <h2 id="cinemaFeatureTitle"></h2>
+    <div id="cinemaFeatureMeta"></div>
+    <button id="cinemaFeatureBtn" type="button">▶ Detail filmu</button>
+  </div>
+</div>
+</div><h1>Objav svoj<br>ďalší príbeh.</h1><p>Filmy, seriály, telenovely a celebrity na jednom mieste.</p><button onclick="openCatalog('movie')">🎬 OBJAVOVAŤ</button></div></div>
 <div id="homeSections"></div>
 </div>
 
@@ -212,7 +245,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 </div></div></div>
 
 <script>
-// LITV MOVIES V9.9.4 – TVmaze dates + strict TMDB display + US/UK/CA/AU series filter + V9.8.2 stable features
+// LITV MOVIES V9.9.5 – 24h calendar cache + cinema featured banner + TVmaze/TMDB calendar + V9.8.2 stable features
 const API="https://litv-movie-api.cartermilan83.workers.dev";
 const SECTIONS=[
  {key:"random",title:"🎲 Náhodné"},
@@ -319,7 +352,27 @@ function favoritesPage(){hide();document.getElementById("favoritesPage").style.d
 function watchlistPage(){hide();document.getElementById("watchlistPage").style.display="block";renderSaved("watchlist","litv_watchlist")}
 function celebPage(){hide();document.getElementById("celebPage").style.display="block";showCelebType(celebType)}
 
-// ===== V9.9.4 CALENDAR – TMDB movies + TVmaze dates + strict TMDB display + country filter =====
+
+// ===== V9.9.5 24-HOUR CALENDAR CACHE =====
+const LITV_CAL_CACHE_PREFIX="litv_calendar_cache_v995_";
+const LITV_CAL_CACHE_TTL=24*60*60*1000;
+async function litvCalendarCachedJson(url){
+  const key=LITV_CAL_CACHE_PREFIX+url;
+  try{
+    const saved=localStorage.getItem(key);
+    if(saved){
+      const parsed=JSON.parse(saved);
+      if(parsed && Date.now()-parsed.time<LITV_CAL_CACHE_TTL) return parsed.data;
+    }
+  }catch(e){}
+  const res=await fetch(url);
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const data=await res.json();
+  try{localStorage.setItem(key,JSON.stringify({time:Date.now(),data}))}catch(e){}
+  return data;
+}
+
+// ===== V9.9.5 CALENDAR – TMDB movies + TVmaze dates + strict TMDB display + country filter =====
 let calendarDate=new Date();
 calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth(),1);
 let calendarFilter="all",calendarView="month",calendarItems=[],calendarLoaded=false,calendarLoading=false;
@@ -1282,6 +1335,68 @@ restoreAccount=async function(){
 
 // Restore the account only after the full page (including the account modal) exists.
 window.addEventListener("DOMContentLoaded",()=>restoreAccount());
+
+
+// ===== V9.9.5 FEATURED CINEMA BANNER =====
+let litvCinemaFeatured=null;
+function litvSkDate(s){
+  if(!s)return "";
+  const d=new Date(s+"T12:00:00");
+  return Number.isNaN(d.getTime())?s:d.toLocaleDateString("sk-SK",{day:"numeric",month:"long",year:"numeric"});
+}
+async function loadCinemaFeature(){
+  const box=document.getElementById("cinemaFeature");
+  if(!box)return;
+  try{
+    const now=new Date(), y=now.getFullYear(), mo=now.getMonth();
+    let pool=[];
+    for(let p=1;p<=3;p++){
+      const url=API+"/catalog?type=movie&section=upcoming&page="+p;
+      const data=await litvCalendarCachedJson(url);
+      const arr=Array.isArray(data)?data:(data.results||data.items||[]);
+      pool.push(...arr);
+    }
+    const month=pool.filter(x=>{
+      const s=x.release_date||x.date||"";
+      if(!s)return false;
+      const d=new Date(s+"T12:00:00");
+      return d.getFullYear()===y && d.getMonth()===mo;
+    });
+    const candidates=month.filter(x=>x.backdrop_path);
+    const pick=(candidates.length?candidates:month)[0];
+    if(!pick)throw new Error("Bez premiéry");
+    litvCinemaFeatured={...pick,media_type:"movie",litv_api_type:"movie",litv_source_category:"movie"};
+    const img=document.getElementById("cinemaFeatureBackdrop");
+    if(pick.backdrop_path){
+      img.src="https://image.tmdb.org/t/p/original"+pick.backdrop_path;
+      img.style.display="block";
+    }else if(pick.poster_path){
+      img.src="https://image.tmdb.org/t/p/w780"+pick.poster_path;
+      img.style.display="block";
+    }
+    document.getElementById("cinemaFeatureTitle").textContent=pick.title||pick.name||"Film mesiaca";
+    document.getElementById("cinemaFeatureMeta").textContent="Premiéra • "+litvSkDate(pick.release_date);
+    document.getElementById("cinemaFeatureLoading").style.display="none";
+    document.getElementById("cinemaFeatureContent").style.display="block";
+  }catch(e){
+    const l=document.getElementById("cinemaFeatureLoading");
+    if(l)l.textContent="🎬 Filmové premiéry tohto mesiaca";
+  }
+}
+function openCinemaFeature(){
+  if(!litvCinemaFeatured)return;
+  try{ openDetail(litvCinemaFeatured); }catch(e){ console.warn("LITV cinema banner:",e); }
+}
+window.addEventListener("DOMContentLoaded",()=>{
+  const box=document.getElementById("cinemaFeature");
+  const btn=document.getElementById("cinemaFeatureBtn");
+  if(box){
+    box.addEventListener("click",e=>{if(e.target!==btn)openCinemaFeature()});
+    box.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")openCinemaFeature()});
+  }
+  if(btn)btn.addEventListener("click",e=>{e.stopPropagation();openCinemaFeature()});
+  loadCinemaFeature();
+});
 
 </script>
 
