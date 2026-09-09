@@ -50,6 +50,22 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 .account-profile{padding:15px;border-radius:16px;background:rgba(255,255,255,.06);margin:15px 0}
 @media(max-width:700px){.account-modal{padding:12px}.account-card{margin:3vh auto;padding:19px}}
 
+
+/* V9.9 – LITV Calendar */
+.calendarHero{padding:44px 5% 20px;background:linear-gradient(135deg,#19070a,#080808)}
+.calendarHero h1{font-size:clamp(34px,6vw,56px);margin:0 0 8px}.calendarHero p{color:#aaa;margin:0;max-width:760px}
+.calendarToolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:18px}
+.calendarMonthNav{display:flex;gap:9px;align-items:center}.calendarMonthNav button,.calendarViewBtns button{background:#171717;border:1px solid #333;color:#ddd;padding:10px 13px;border-radius:10px;cursor:pointer}
+.calendarMonthNav button:hover,.calendarViewBtns button:hover,.calendarViewBtns button.active{background:#e50914;border-color:#e50914;color:#fff}
+#calendarMonthTitle{min-width:180px;text-align:center;font-size:22px;font-weight:800}
+.calendarFilters{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 20px}.calendarFilters button{background:#151515;border:1px solid #333;color:#bbb;padding:10px 14px;border-radius:999px;cursor:pointer}.calendarFilters button.active,.calendarFilters button:hover{background:#e50914;border-color:#e50914;color:#fff}
+.calendarGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}.calendarDow{color:#777;text-transform:uppercase;font-size:11px;font-weight:800;padding:7px;text-align:center;letter-spacing:.08em}
+.calendarDay{min-height:128px;background:#111;border:1px solid #242424;border-radius:14px;padding:8px;overflow:hidden}.calendarDay.outside{opacity:.35}.calendarDay.today{border-color:#e50914;box-shadow:0 0 0 1px rgba(229,9,20,.35) inset}.calendarDayNum{font-weight:800;font-size:13px;margin-bottom:7px;color:#ccc}
+.calendarEvents{display:flex;flex-direction:column;gap:6px}.calendarEvent{display:grid;grid-template-columns:34px 1fr;gap:7px;align-items:center;background:#181818;border-radius:9px;padding:5px;cursor:pointer;transition:.15s}.calendarEvent:hover{background:#222;transform:translateY(-1px)}.calendarEvent img{width:34px;height:49px;object-fit:cover;border-radius:5px;background:#222}.calendarEventTitle{font-size:11px;font-weight:700;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.calendarEventType{font-size:10px;color:#888;margin-top:3px}
+.calendarMore{font-size:10px;color:#e6a0a5;padding:2px 4px}.calendarList{display:none;flex-direction:column;gap:10px}.calendarListItem{display:grid;grid-template-columns:74px 54px 1fr;gap:12px;align-items:center;background:#111;border:1px solid #242424;border-radius:14px;padding:10px;cursor:pointer}.calendarListItem:hover{border-color:#444;background:#151515}.calendarListDate{text-align:center}.calendarListDate b{display:block;font-size:24px}.calendarListDate span{font-size:11px;color:#888;text-transform:uppercase}.calendarListItem img{width:54px;height:78px;object-fit:cover;border-radius:7px;background:#222}.calendarListItem h3{margin:0 0 5px;font-size:16px}.calendarListMeta{font-size:12px;color:#888}.calendarEmpty{padding:42px 12px;text-align:center;color:#777;background:#111;border:1px dashed #333;border-radius:14px}
+.calendarStatus{color:#8e97a6;font-size:13px;margin:-6px 0 18px}.calendarLegend{display:flex;gap:14px;flex-wrap:wrap;color:#777;font-size:12px;margin-top:15px}.calendarDot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}.calendarDot.movie{background:#e50914}.calendarDot.tv{background:#5ca8ff}
+@media(max-width:700px){.calendarHero{padding:32px 4% 16px}.calendarGrid,.calendarDow{display:none!important}.calendarList{display:flex!important}.calendarToolbar{align-items:flex-start}.calendarMonthNav{width:100%;justify-content:space-between}.calendarViewBtns{display:none}.calendarListItem{grid-template-columns:62px 48px 1fr;gap:9px}.calendarListItem img{width:48px;height:70px}.calendarListDate b{font-size:21px}.calendarFilters{overflow-x:auto;flex-wrap:nowrap;padding-bottom:3px}.calendarFilters button{white-space:nowrap}}
+
 </style>
 </head>
 <body>
@@ -64,6 +80,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 <button onclick="celebPage()">⭐ Celeb</button>
 <button onclick="favoritesPage()">❤️ Obľúbené</button>
 <button onclick="watchlistPage()">🔖 Watchlist</button>
+<button onclick="calendarPage()">📅 Kalendár</button>
 </div>
 <div class="search"><input id="q" placeholder="Hľadať film alebo seriál..."><button onclick="search()">Hľadať</button></div>
 </nav>
@@ -118,6 +135,38 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 
 <div id="watchlistPage" class="page"><section><div class="title">🔖 Watchlist</div><div class="status">Filmy, seriály a telenovely spolu.</div><div id="watchlist" class="grid"></div></section></div>
 
+
+<div id="calendarPage" class="page">
+  <div class="calendarHero">
+    <h1>📅 Kalendár</h1>
+    <p>Premiéry filmov a seriálov na jednom mieste. Kliknutím na titul otvoríš jeho detail v LITV MOVIES.</p>
+  </div>
+  <section>
+    <div class="calendarToolbar">
+      <div class="calendarMonthNav">
+        <button onclick="changeCalendarMonth(-1)" aria-label="Predchádzajúci mesiac">‹</button>
+        <div id="calendarMonthTitle"></div>
+        <button onclick="changeCalendarMonth(1)" aria-label="Ďalší mesiac">›</button>
+      </div>
+      <div class="calendarViewBtns">
+        <button id="calendarMonthBtn" class="active" onclick="setCalendarView('month')">▦ Mesiac</button>
+        <button id="calendarListBtn" onclick="setCalendarView('list')">☷ Zoznam</button>
+      </div>
+    </div>
+    <div class="calendarFilters">
+      <button id="calFilterAll" class="active" onclick="setCalendarFilter('all')">Všetko</button>
+      <button id="calFilterMovie" onclick="setCalendarFilter('movie')">🎬 Filmy</button>
+      <button id="calFilterTv" onclick="setCalendarFilter('tv')">📺 Seriály</button>
+      <button id="calFilterMine" onclick="setCalendarFilter('mine')">❤️ Moje sledované</button>
+    </div>
+    <div id="calendarStatus" class="calendarStatus">Načítavam premiéry…</div>
+    <div id="calendarWeekdays" class="calendarGrid"></div>
+    <div id="calendarGrid" class="calendarGrid"></div>
+    <div id="calendarList" class="calendarList"></div>
+    <div class="calendarLegend"><span><i class="calendarDot movie"></i>Film</span><span><i class="calendarDot tv"></i>Seriál</span></div>
+  </section>
+</div>
+
 <div id="celebPage" class="page">
 <section>
 <div class="title">⭐ CELEB</div>
@@ -163,7 +212,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 </div></div></div>
 
 <script>
-// LITV MOVIES V9.8 – expanded external database logos
+// LITV MOVIES V9.9 – calendar + V9.8.2 stable features
 const API="https://litv-movie-api.cartermilan83.workers.dev";
 const SECTIONS=[
  {key:"random",title:"🎲 Náhodné"},
@@ -269,6 +318,82 @@ function searchPage(){hide();document.getElementById("searchPage").style.display
 function favoritesPage(){hide();document.getElementById("favoritesPage").style.display="block";const q=document.getElementById("favoritesQuery");if(q)q.value="";renderFavoritesMenu("movie")}
 function watchlistPage(){hide();document.getElementById("watchlistPage").style.display="block";renderSaved("watchlist","litv_watchlist")}
 function celebPage(){hide();document.getElementById("celebPage").style.display="block";showCelebType(celebType)}
+
+// ===== V9.9 CALENDAR =====
+let calendarDate=new Date();
+calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth(),1);
+let calendarFilter="all",calendarView="month",calendarItems=[],calendarLoaded=false,calendarLoading=false;
+const CAL_MONTHS=["január","február","marec","apríl","máj","jún","júl","august","september","október","november","december"];
+const CAL_DAYS=["Po","Ut","St","Št","Pi","So","Ne"];
+function calendarItemDate(m){return m.release_date||m.first_air_date||""}
+function calendarItemType(m){return m.__calType||apiMediaType(m)}
+function calendarSavedIds(){
+  const ids=new Set();
+  [...get("litv_watchlist"),...get(FAV_KEYS.movie),...get(FAV_KEYS.tv),...get(FAV_KEYS.telenovela)].forEach(x=>ids.add(String(x.id)));
+  return ids;
+}
+async function loadCalendarData(force=false){
+  if((calendarLoaded&&!force)||calendarLoading)return;
+  calendarLoading=true;
+  const st=document.getElementById("calendarStatus");if(st)st.textContent="Načítavam premiéry z TMDB…";
+  try{
+    const req=[];
+    for(let p=1;p<=6;p++){
+      req.push(api("/catalog?type=movie&section=upcoming&page="+p).then(d=>(d.results||[]).map(x=>({...x,__calType:"movie",litv_source_category:"movie",litv_api_type:"movie"}))));
+      req.push(api("/catalog?type=tv&section=upcoming&page="+p).then(d=>(d.results||[]).map(x=>({...x,__calType:"tv",litv_source_category:"tv",litv_api_type:"tv"}))));
+    }
+    const chunks=await Promise.allSettled(req),map=new Map();
+    chunks.forEach(r=>{if(r.status==="fulfilled")r.value.forEach(x=>{const dt=calendarItemDate(x);if(dt)map.set(calendarItemType(x)+":"+x.id,x)})});
+    calendarItems=[...map.values()].sort((a,b)=>calendarItemDate(a).localeCompare(calendarItemDate(b)));
+    calendarLoaded=true;
+    if(st)st.textContent="Premiéry z TMDB • Moje sledované = tituly z Obľúbených alebo Watchlistu, ktoré majú dátum v tomto kalendári.";
+  }catch(e){if(st)st.textContent="Kalendár sa nepodarilo načítať.";}
+  calendarLoading=false;renderCalendar();
+}
+function calendarPage(){
+  hide();document.getElementById("calendarPage").style.display="block";
+  if(window.innerWidth<=700)calendarView="list";
+  setCalendarView(calendarView,false);
+  renderCalendar();loadCalendarData();
+}
+function changeCalendarMonth(delta){calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()+delta,1);renderCalendar()}
+function setCalendarFilter(f){
+  calendarFilter=f;
+  const ids={all:"calFilterAll",movie:"calFilterMovie",tv:"calFilterTv",mine:"calFilterMine"};
+  Object.values(ids).forEach(id=>document.getElementById(id)?.classList.remove("active"));document.getElementById(ids[f])?.classList.add("active");renderCalendar();
+}
+function setCalendarView(v,render=true){
+  calendarView=v;document.getElementById("calendarMonthBtn")?.classList.toggle("active",v==="month");document.getElementById("calendarListBtn")?.classList.toggle("active",v==="list");
+  const g=document.getElementById("calendarGrid"),w=document.getElementById("calendarWeekdays"),l=document.getElementById("calendarList");
+  if(g)g.style.display=v==="month"?"grid":"none";if(w)w.style.display=v==="month"?"grid":"none";if(l)l.style.display=v==="list"?"flex":"none";if(render)renderCalendar();
+}
+function filteredCalendarItems(){
+  const y=calendarDate.getFullYear(),m=calendarDate.getMonth(),saved=calendarSavedIds();
+  return calendarItems.filter(x=>{
+    const d=new Date(calendarItemDate(x)+"T12:00:00");if(d.getFullYear()!==y||d.getMonth()!==m)return false;
+    const t=calendarItemType(x);if(calendarFilter==="movie"&&t!=="movie")return false;if(calendarFilter==="tv"&&t!=="tv")return false;if(calendarFilter==="mine"&&!saved.has(String(x.id)))return false;return true;
+  });
+}
+function openCalendarItem(m){openDetail(normalized(m,calendarItemType(m)==="movie"?"movie":"tv"))}
+function calEventHtml(m){
+  const img=m.poster_path?"https://image.tmdb.org/t/p/w185"+m.poster_path:"";const t=calendarItemType(m);return '<div class="calendarEvent" data-cal="'+t+':'+m.id+'">'+(img?'<img src="'+img+'" loading="lazy" alt="">':'<div></div>')+'<div><div class="calendarEventTitle">'+esc(mediaTitle(m))+'</div><div class="calendarEventType">'+(t==="movie"?'🎬 Film':'📺 Seriál')+'</div></div></div>';
+}
+function bindCalendarClicks(root,items){
+  if(!root)return;const map=new Map(items.map(x=>[calendarItemType(x)+":"+x.id,x]));root.querySelectorAll("[data-cal]").forEach(el=>el.onclick=()=>{const x=map.get(el.dataset.cal);if(x)openCalendarItem(x)});
+}
+function renderCalendar(){
+  const title=document.getElementById("calendarMonthTitle");if(!title)return;title.textContent=CAL_MONTHS[calendarDate.getMonth()]+" "+calendarDate.getFullYear();
+  const items=filteredCalendarItems(),byDay=new Map();items.forEach(x=>{const d=Number(calendarItemDate(x).slice(8,10));if(!byDay.has(d))byDay.set(d,[]);byDay.get(d).push(x)});
+  const weekdays=document.getElementById("calendarWeekdays");if(weekdays)weekdays.innerHTML=CAL_DAYS.map(x=>'<div class="calendarDow">'+x+'</div>').join("");
+  const grid=document.getElementById("calendarGrid"),list=document.getElementById("calendarList");
+  const y=calendarDate.getFullYear(),m=calendarDate.getMonth(),days=new Date(y,m+1,0).getDate();let first=new Date(y,m,1).getDay();first=first===0?6:first-1;
+  if(grid){let html="";for(let i=0;i<first;i++)html+='<div class="calendarDay outside"></div>';const now=new Date();for(let d=1;d<=days;d++){const ev=byDay.get(d)||[],today=now.getFullYear()===y&&now.getMonth()===m&&now.getDate()===d;html+='<div class="calendarDay'+(today?' today':'')+'"><div class="calendarDayNum">'+d+'</div><div class="calendarEvents">'+ev.slice(0,2).map(calEventHtml).join("")+(ev.length>2?'<div class="calendarMore">+'+(ev.length-2)+' ďalšie</div>':'')+'</div></div>';}grid.innerHTML=html;bindCalendarClicks(grid,items)}
+  if(list){
+    if(!items.length)list.innerHTML='<div class="calendarEmpty">V tomto mesiaci pre zvolený filter zatiaľ nemáme žiadnu premiéru.</div>';
+    else list.innerHTML=items.map(x=>{const dt=new Date(calendarItemDate(x)+"T12:00:00"),img=x.poster_path?"https://image.tmdb.org/t/p/w185"+x.poster_path:"",t=calendarItemType(x);return '<div class="calendarListItem" data-cal="'+t+':'+x.id+'"><div class="calendarListDate"><b>'+dt.getDate()+'</b><span>'+CAL_MONTHS[dt.getMonth()].slice(0,3)+'</span></div>'+(img?'<img src="'+img+'" loading="lazy" alt="">':'<div></div>')+'<div><h3>'+esc(mediaTitle(x))+'</h3><div class="calendarListMeta">'+(t==="movie"?'🎬 Film':'📺 Seriál')+' • '+calendarItemDate(x)+'</div></div></div>'}).join("");bindCalendarClicks(list,items)}
+  setCalendarView(calendarView,false);
+}
+
 
 function card(raw,typeHint){
  const m=normalized(raw,typeHint),d=document.createElement("div");d.className="movie";
