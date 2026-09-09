@@ -212,7 +212,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 </div></div></div>
 
 <script>
-// LITV MOVIES V9.9.3 – TVmaze dates + TMDB localized series data + V9.8.2 stable features
+// LITV MOVIES V9.9.4 – TVmaze dates + strict TMDB display + US/UK/CA/AU series filter + V9.8.2 stable features
 const API="https://litv-movie-api.cartermilan83.workers.dev";
 const SECTIONS=[
  {key:"random",title:"🎲 Náhodné"},
@@ -319,7 +319,7 @@ function favoritesPage(){hide();document.getElementById("favoritesPage").style.d
 function watchlistPage(){hide();document.getElementById("watchlistPage").style.display="block";renderSaved("watchlist","litv_watchlist")}
 function celebPage(){hide();document.getElementById("celebPage").style.display="block";showCelebType(celebType)}
 
-// ===== V9.9.3 CALENDAR – TMDB movies + TVmaze dates + TMDB localized series data =====
+// ===== V9.9.4 CALENDAR – TMDB movies + TVmaze dates + strict TMDB display + country filter =====
 let calendarDate=new Date();
 calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth(),1);
 let calendarFilter="all",calendarView="month",calendarItems=[],calendarLoaded=false,calendarLoading=false;
@@ -345,7 +345,7 @@ function tvmazeEpisodeToCalendar(ep){
     __tvmazeEpisodeId:ep.id,
     __tvmazeShowId:show.id,
     __episodeCode:(season&&number)?("S"+season+"E"+number):"",
-    __episodeName:ep.name||"",
+    __episodeName:"",
     title:show.name||"Seriál",
     name:show.name||"Seriál",
     first_air_date:ep.airdate||"",
@@ -399,23 +399,36 @@ async function loadCalendarData(force=false){
         const q=String(sample.name||sample.title||"").toLowerCase();
         const exact=list.find(x=>String(x.name||x.title||"").toLowerCase()===q)||list[0];
         if(exact){
+          const allowedCountries=new Set(["US","GB","CA","AU"]);
+          const countries=Array.isArray(exact.origin_country)?exact.origin_country:[];
+          const allowed=countries.some(c=>allowedCountries.has(String(c).toUpperCase()));
           tvEpisodes.filter(x=>x.__tvmazeShowId===sample.__tvmazeShowId).forEach(x=>{
+            if(!allowed){
+              map.delete(x.__calKey);
+              return;
+            }
             x.__tmdbId=exact.id;
             x.id=exact.id;
-            x.title=exact.name||exact.title||x.title;
-            x.name=exact.name||exact.title||x.name;
-            x.poster_path=exact.poster_path||x.poster_path;
+            // Viditeľné údaje seriálu sú výhradne z TMDB.
+            x.title=exact.name||exact.title||"Seriál";
+            x.name=exact.name||exact.title||"Seriál";
+            x.poster_path=exact.poster_path||null;
             x.__posterUrl="";
+            x.__episodeName="";
+            x.__tmdbMatched=true;
           });
+        }else{
+          // Ak seriál nevieme spoľahlivo spojiť s TMDB, radšej ho nezobrazíme.
+          tvEpisodes.filter(x=>x.__tvmazeShowId===sample.__tvmazeShowId).forEach(x=>map.delete(x.__calKey));
         }
       }catch(e){console.warn("TMDB calendar localization",sample.name,e)}
       done++;
-      if(st)st.textContent="Dopĺňam názvy a postery z TMDB… "+done+"/"+shows.size;
+      if(st)st.textContent="Prepájam seriály s TMDB a filtrujem USA / UK / Kanadu / Austráliu… "+done+"/"+shows.size;
       if(done<shows.size)await new Promise(resolve=>setTimeout(resolve,80));
     }
     calendarItems=[...map.values()].sort((a,b)=>calendarItemDate(a).localeCompare(calendarItemDate(b)));
     calendarLoaded=true;
-    if(st)st.innerHTML='🎬 Filmy a údaje seriálov: TMDB &nbsp;•&nbsp; 📅 Dátumy seriálových epizód: <a href="https://www.tvmaze.com/" target="_blank" rel="noopener" style="color:#bbb">TVmaze</a> &nbsp;•&nbsp; TVmaze slúži iba ako zdroj kalendára epizód.';
+    if(st)st.innerHTML='🎬 Filmy a údaje seriálov: TMDB &nbsp;•&nbsp; 📅 Dátumy seriálových epizód: <a href="https://www.tvmaze.com/" target="_blank" rel="noopener" style="color:#bbb">TVmaze</a> &nbsp;•&nbsp; TVmaze slúži iba na dátumy a čísla epizód. Seriály: iba USA, UK, Kanada a Austrália.';
   }catch(e){
     console.warn("LITV calendar:",e);
     if(st)st.textContent="Kalendár sa nepodarilo úplne načítať. Skús ho o chvíľu otvoriť znova.";
