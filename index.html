@@ -212,7 +212,7 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
 </div></div></div>
 
 <script>
-// LITV MOVIES V9.9.1 – TVmaze series calendar + V9.8.2 stable features
+// LITV MOVIES V9.9.3 – TVmaze dates + TMDB localized series data + V9.8.2 stable features
 const API="https://litv-movie-api.cartermilan83.workers.dev";
 const SECTIONS=[
  {key:"random",title:"🎲 Náhodné"},
@@ -319,7 +319,7 @@ function favoritesPage(){hide();document.getElementById("favoritesPage").style.d
 function watchlistPage(){hide();document.getElementById("watchlistPage").style.display="block";renderSaved("watchlist","litv_watchlist")}
 function celebPage(){hide();document.getElementById("celebPage").style.display="block";showCelebType(celebType)}
 
-// ===== V9.9.1 CALENDAR – TMDB movies + TVmaze series episodes =====
+// ===== V9.9.3 CALENDAR – TMDB movies + TVmaze dates + TMDB localized series data =====
 let calendarDate=new Date();
 calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth(),1);
 let calendarFilter="all",calendarView="month",calendarItems=[],calendarLoaded=false,calendarLoading=false;
@@ -334,7 +334,7 @@ function calendarSavedIds(){
   return ids;
 }
 function tvmazeEpisodeToCalendar(ep){
-  const show=ep?._embedded?.show||{};
+  const show=ep?._embedded?.show||ep?.show||{};
   const season=ep.season!=null?String(ep.season).padStart(2,"0"):"";
   const number=ep.number!=null?String(ep.number).padStart(2,"0"):"";
   return {
@@ -365,14 +365,57 @@ async function loadCalendarData(force=false){
   try{
     const movieReq=[];
     for(let p=1;p<=6;p++) movieReq.push(api("/catalog?type=movie&section=upcoming&page="+p).then(d=>(d.results||[]).map(x=>({...x,__calType:"movie",litv_source_category:"movie",litv_api_type:"movie"}))));
-    const tvmazeReq=fetch("https://api.tvmaze.com/schedule/full",{headers:{"Accept":"application/json"}}).then(r=>{if(!r.ok)throw new Error("TVmaze "+r.status);return r.json()});
-    const [movieChunks,tvmazeData]=await Promise.all([Promise.allSettled(movieReq),tvmazeReq]);
+    const movieChunks=await Promise.allSettled(movieReq);
     const map=new Map();
     movieChunks.forEach(r=>{if(r.status==="fulfilled")r.value.forEach(x=>{const dt=calendarItemDate(x);if(dt)map.set(calendarItemKey(x),x)})});
-    (Array.isArray(tvmazeData)?tvmazeData:[]).forEach(ep=>{const x=tvmazeEpisodeToCalendar(ep);if(calendarItemDate(x))map.set(calendarItemKey(x),x)});
+
+    // TVmaze: nacitame streamingovy program po jednotlivych dnoch zobrazeneho mesiaca.
+    // Je to mensia a spolahlivejsia odpoved nez obrovsky /schedule/full.
+    const cy=calendarDate.getFullYear(),cm=calendarDate.getMonth();
+    const dayCount=new Date(cy,cm+1,0).getDate();
+    let tvCount=0;
+    for(let day=1;day<=dayCount;day++){
+      const ds=cy+"-"+String(cm+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+      try{
+        const r=await fetch("https://api.tvmaze.com/schedule/web?date="+ds,{headers:{"Accept":"application/json"}});
+        if(r.ok){
+          const arr=await r.json();
+          (Array.isArray(arr)?arr:[]).forEach(ep=>{const x=tvmazeEpisodeToCalendar(ep);if(calendarItemDate(x)){map.set(calendarItemKey(x),x);tvCount++}});
+        }
+      }catch(e){console.warn("TVmaze day",ds,e)}
+      if(st)st.textContent="Načítavam seriály z TVmaze… "+day+"/"+dayCount;
+      if(day<dayCount)await new Promise(resolve=>setTimeout(resolve,550));
+    }
+    // TVmaze urcuje datum/epizodu. Nazov, poster a TMDB ID sa pokusime doplnit z nasho TMDB API (cs-CZ),
+    // aby sa v LITV nezobrazovali cudzojazycne nazvy z TVmaze, ak TMDB pozna lokalizovany nazov.
+    const tvEpisodes=[...map.values()].filter(x=>x.__tvmaze);
+    const shows=new Map();
+    tvEpisodes.forEach(x=>{if(!shows.has(String(x.__tvmazeShowId)))shows.set(String(x.__tvmazeShowId),x)});
+    let done=0;
+    for(const sample of shows.values()){
+      try{
+        const d=await api("/search?query="+encodeURIComponent(sample.name||sample.title||""));
+        const list=(d.results||[]).filter(x=>apiMediaType(x)==="tv");
+        const q=String(sample.name||sample.title||"").toLowerCase();
+        const exact=list.find(x=>String(x.name||x.title||"").toLowerCase()===q)||list[0];
+        if(exact){
+          tvEpisodes.filter(x=>x.__tvmazeShowId===sample.__tvmazeShowId).forEach(x=>{
+            x.__tmdbId=exact.id;
+            x.id=exact.id;
+            x.title=exact.name||exact.title||x.title;
+            x.name=exact.name||exact.title||x.name;
+            x.poster_path=exact.poster_path||x.poster_path;
+            x.__posterUrl="";
+          });
+        }
+      }catch(e){console.warn("TMDB calendar localization",sample.name,e)}
+      done++;
+      if(st)st.textContent="Dopĺňam názvy a postery z TMDB… "+done+"/"+shows.size;
+      if(done<shows.size)await new Promise(resolve=>setTimeout(resolve,80));
+    }
     calendarItems=[...map.values()].sort((a,b)=>calendarItemDate(a).localeCompare(calendarItemDate(b)));
     calendarLoaded=true;
-    if(st)st.innerHTML='🎬 Filmy: TMDB &nbsp;•&nbsp; 📺 Seriálové epizódy: <a href="https://www.tvmaze.com/" target="_blank" rel="noopener" style="color:#bbb">TVmaze</a> &nbsp;•&nbsp; Moje sledované používa tvoje uložené TMDB tituly.';
+    if(st)st.innerHTML='🎬 Filmy a údaje seriálov: TMDB &nbsp;•&nbsp; 📅 Dátumy seriálových epizód: <a href="https://www.tvmaze.com/" target="_blank" rel="noopener" style="color:#bbb">TVmaze</a> &nbsp;•&nbsp; TVmaze slúži iba ako zdroj kalendára epizód.';
   }catch(e){
     console.warn("LITV calendar:",e);
     if(st)st.textContent="Kalendár sa nepodarilo úplne načítať. Skús ho o chvíľu otvoriť znova.";
@@ -385,7 +428,7 @@ function calendarPage(){
   setCalendarView(calendarView,false);
   renderCalendar();loadCalendarData();
 }
-function changeCalendarMonth(delta){calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()+delta,1);renderCalendar()}
+function changeCalendarMonth(delta){calendarDate=new Date(calendarDate.getFullYear(),calendarDate.getMonth()+delta,1);calendarLoaded=false;renderCalendar();loadCalendarData(true)}
 function setCalendarFilter(f){
   calendarFilter=f;
   const ids={all:"calFilterAll",movie:"calFilterMovie",tv:"calFilterTv",mine:"calFilterMine"};
@@ -413,11 +456,15 @@ async function openCalendarItem(m){
   const st=document.getElementById("calendarStatus"),old=st?.innerHTML;
   if(st)st.textContent="Otváram seriál "+mediaTitle(m)+"…";
   try{
-    const d=await api("/search?query="+encodeURIComponent(mediaTitle(m)));
-    const list=(d.results||[]).filter(x=>apiMediaType(x)==="tv");
-    const exact=list.find(x=>mediaTitle(x).toLowerCase()===mediaTitle(m).toLowerCase())||list[0];
-    if(exact){exact.litv_source_category="tv";exact.litv_api_type="tv";openDetail(normalized(exact,"tv"));}
-    else window.open("https://www.tvmaze.com/shows/"+m.__tvmazeShowId,"_blank","noopener");
+    if(m.__tmdbId){
+      openDetail(normalized({id:m.__tmdbId,name:m.name,title:m.title,poster_path:m.poster_path,media_type:"tv",litv_api_type:"tv",litv_source_category:"tv"},"tv"));
+    }else{
+      const d=await api("/search?query="+encodeURIComponent(mediaTitle(m)));
+      const list=(d.results||[]).filter(x=>apiMediaType(x)==="tv");
+      const exact=list.find(x=>mediaTitle(x).toLowerCase()===mediaTitle(m).toLowerCase())||list[0];
+      if(exact){exact.litv_source_category="tv";exact.litv_api_type="tv";openDetail(normalized(exact,"tv"));}
+      else window.open("https://www.tvmaze.com/shows/"+m.__tvmazeShowId,"_blank","noopener");
+    }
   }catch(e){window.open("https://www.tvmaze.com/shows/"+m.__tvmazeShowId,"_blank","noopener")}
   if(st&&old!=null)st.innerHTML=old;
 }
