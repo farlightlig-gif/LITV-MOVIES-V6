@@ -98,6 +98,58 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
  #cinemaFeatureContent{max-width:86%;left:18px;right:18px;bottom:18px}
 }
 
+
+/* ===== V9.9.9 – GLASS "NAJBLIŽŠIE EPIZÓDY" (isolated) ===== */
+.litvHeroWrap{position:relative}
+#litvNextEpisodes{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:min(23vw,360px);
+  min-width:270px;
+  max-height:286px;
+  padding:16px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:22px;
+  background:rgba(12,15,20,.42);
+  -webkit-backdrop-filter:blur(18px) saturate(135%);
+  backdrop-filter:blur(18px) saturate(135%);
+  box-shadow:0 18px 45px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.08);
+  overflow:hidden;
+  z-index:3;
+}
+.litvNextEpisodesTitle{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:10px;font-size:12px;font-weight:900;letter-spacing:.09em;
+  text-transform:uppercase;color:#f5f7fa;
+}
+.litvNextEpisodesTitle span:last-child{color:#e50914;font-size:10px}
+.litvEpisodeList{display:flex;flex-direction:column;gap:8px}
+.litvEpisodeItem{
+  display:block;padding:9px 10px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.055);
+  cursor:pointer;transition:.18s ease;
+}
+.litvEpisodeItem:hover{background:rgba(255,255,255,.095);transform:translateY(-1px)}
+.litvEpisodeName{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#fff;font-size:13px;font-weight:850;
+}
+.litvEpisodeMeta{
+  margin-top:4px;color:#bfc7d2;font-size:11px;font-weight:650;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.litvEpisodeMeta b{color:#ff4650}
+.litvEpisodeEmpty{padding:20px 8px;text-align:center;color:#aeb6c2;font-size:12px}
+@media(max-width:1180px){
+  #litvNextEpisodes{
+    position:relative;left:auto;top:auto;transform:none;
+    width:calc(100% - 32px);min-width:0;max-height:none;margin:16px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -126,6 +178,16 @@ section{padding:28px 5%}.sectionHead{display:flex;align-items:center;justify-con
       <button onclick="openCatalog('movie')">🎬 OBJAVOVAŤ</button>
     </div>
   </div>
+
+
+  <aside id="litvNextEpisodes" aria-label="Najbližšie epizódy seriálov">
+    <div class="litvNextEpisodesTitle">
+      <span>📺 Najbližšie epizódy</span><span>LIVE PROGRAM</span>
+    </div>
+    <div id="litvEpisodeList" class="litvEpisodeList">
+      <div class="litvEpisodeEmpty">Načítavam najbližšie epizódy…</div>
+    </div>
+  </aside>
 
   <div id="cinemaFeature" role="button" tabindex="0" aria-label="Film v kinách tento mesiac">
     <div id="cinemaFeatureLoading">Načítavam film mesiaca…</div>
@@ -1416,6 +1478,103 @@ window.addEventListener("DOMContentLoaded",()=>{
   if(btn)btn.addEventListener("click",e=>{e.stopPropagation();openCinemaFeature()});
   loadCinemaFeature();
 });
+
+
+/* ===== V9.9.9 – NEXT EPISODES GLASS PANEL ===== */
+(function(){
+  const BIG_SHOW_SCORE = 65;
+  const MAX_SHOWS = 3;
+
+  function epDateTime(ep){
+    const stamp=ep?.airstamp || (ep?.airdate ? ep.airdate+"T"+(ep.airtime||"00:00")+":00" : "");
+    const d=stamp ? new Date(stamp) : null;
+    return d && !isNaN(d) ? d : null;
+  }
+  function epCode(ep){
+    const s=Number(ep?.season||0), n=Number(ep?.number||0);
+    return (s&&n) ? "S"+String(s).padStart(2,"0")+"E"+String(n).padStart(2,"0") : "";
+  }
+  function fmt(d){
+    try{
+      return new Intl.DateTimeFormat("sk-SK",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"}).format(d);
+    }catch(e){ return d.toLocaleString(); }
+  }
+  async function cached(url){
+    if(typeof litvCalendarCachedJson==="function") return litvCalendarCachedJson(url);
+    const r=await fetch(url); if(!r.ok) throw new Error("TVmaze "+r.status); return r.json();
+  }
+  async function loadNextEpisodes(){
+    const box=document.getElementById("litvEpisodeList");
+    if(!box) return;
+    try{
+      const data=await cached("https://api.tvmaze.com/schedule/full");
+      const now=Date.now();
+      const candidates=(Array.isArray(data)?data:[])
+        .map(ep=>({ep,d:epDateTime(ep)}))
+        .filter(x=>x.d && x.d.getTime()>=now)
+        .filter(x=>{
+          const show=x.ep?._embedded?.show || x.ep?.show || {};
+          const lang=String(show.language||"").toLowerCase();
+          const country=show.network?.country?.code || show.webChannel?.country?.code || "";
+          const rating=Number(show.rating?.average||0);
+          const weight=Number(show.weight||0);
+          const allowedCountry=!country || ["US","GB","CA","AU"].includes(country);
+          const english=!lang || lang==="english";
+          return allowedCountry && english && (weight>=BIG_SHOW_SCORE || rating>=7);
+        })
+        .sort((a,b)=>a.d-b.d);
+
+      const seen=new Set(), picked=[];
+      for(const x of candidates){
+        const show=x.ep?._embedded?.show || x.ep?.show || {};
+        const key=show.id || show.name;
+        if(!key || seen.has(key)) continue;
+        seen.add(key); picked.push(x);
+        if(picked.length>=MAX_SHOWS) break;
+      }
+
+      if(!picked.length){
+        box.innerHTML='<div class="litvEpisodeEmpty">Momentálne nemám potvrdenú najbližšiu epizódu veľkého seriálu.</div>';
+        return;
+      }
+
+      box.innerHTML="";
+      for(const x of picked){
+        const show=x.ep?._embedded?.show || x.ep?.show || {};
+        let title=show.name||"Seriál", tmdb=null;
+        try{
+          const r=await fetch(API+"/search?query="+encodeURIComponent(title));
+          if(r.ok){
+            const j=await r.json();
+            const arr=Array.isArray(j)?j:(j.results||[]);
+            tmdb=arr.find(v=>(v.media_type==="tv" || v.first_air_date || v.name) && v.id) || null;
+            if(tmdb) title=tmdb.name||tmdb.title||title;
+          }
+        }catch(e){}
+
+        const item=document.createElement("div");
+        item.className="litvEpisodeItem";
+        item.innerHTML='<div class="litvEpisodeName"></div><div class="litvEpisodeMeta"></div>';
+        item.querySelector(".litvEpisodeName").textContent=title;
+        const code=epCode(x.ep);
+        item.querySelector(".litvEpisodeMeta").innerHTML=(code?'<b>'+code+'</b> • ':'')+fmt(x.d);
+        if(tmdb){
+          item.addEventListener("click",()=>{
+            try{
+              if(typeof openDetail==="function") openDetail({...tmdb,media_type:"tv"});
+              else if(typeof openItem==="function") openItem({...tmdb,media_type:"tv"});
+            }catch(e){}
+          });
+        }
+        box.appendChild(item);
+      }
+    }catch(e){
+      console.warn("LITV next episodes:",e);
+      box.innerHTML='<div class="litvEpisodeEmpty">Program epizód sa teraz nepodarilo načítať.</div>';
+    }
+  }
+  window.addEventListener("DOMContentLoaded",()=>setTimeout(loadNextEpisodes,700));
+})();
 
 </script>
 
